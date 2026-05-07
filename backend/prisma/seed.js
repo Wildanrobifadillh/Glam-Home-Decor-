@@ -3,32 +3,52 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-const seedOwner = async () => {
+const seedUsers = async () => {
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  const owner = await prisma.user.upsert({
-    where: {
-      username: "owner",
-    },
-    update: {
-      name: "Owner Glam House",
-      passwordHash,
-      role: "OWNER",
-      status: "ACTIVE",
-    },
-    create: {
+  const users = [
+    {
       name: "Owner Glam House",
       username: "owner",
-      passwordHash,
       role: "OWNER",
-      status: "ACTIVE",
     },
-  });
+    {
+      name: "Admin Glam House",
+      username: "admin",
+      role: "ADMIN_STAFF",
+    },
+    {
+      name: "Staff Gudang Glam House",
+      username: "gudang",
+      role: "STAFF_GUDANG",
+    },
+  ];
 
-  console.log(`Owner user ready: ${owner.username}`);
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: {
+        username: user.username,
+      },
+      update: {
+        name: user.name,
+        passwordHash,
+        role: user.role,
+        status: "ACTIVE",
+      },
+      create: {
+        name: user.name,
+        username: user.username,
+        passwordHash,
+        role: user.role,
+        status: "ACTIVE",
+      },
+    });
+
+    console.log(`User ready: ${user.username}`);
+  }
 };
 
-seedOwner()
+seedUsers()
   .catch((error) => {
     console.error(error);
     process.exit(1);

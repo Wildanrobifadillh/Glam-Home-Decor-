@@ -17,6 +17,18 @@ const login = async (req, res, next) => {
   }
 };
 
+const getMe = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "User profile retrieved successfully",
+    data: {
+      user: req.user,
+    },
+  });
+};
+
+
 module.exports = {
   login,
+  getMe,
 };
