@@ -18,6 +18,11 @@ enum UserStatus {
   INACTIVE
 }
 
+enum MasterStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -29,4 +34,36 @@ model User {
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model Category {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String       @unique
+  status    MasterStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String       @id @default(uuid()) @db.Uuid
+  supplierCode  String       @unique @map("supplier_code")
+  searchCode    String       @unique @map("search_code")
+  name          String
+  categoryId    String       @map("category_id") @db.Uuid
+  unit          String
+  purchasePrice Int          @map("purchase_price")
+  sellingPrice  Int          @map("selling_price")
+  minStock      Int          @default(0) @map("min_stock")
+  stock         Int          @default(0)
+  status        MasterStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@map("products")
 }
