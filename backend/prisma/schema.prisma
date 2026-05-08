@@ -40,6 +40,11 @@ enum SaleStatus {
   CANCELLED
 }
 
+enum StockOpnameStatus {
+  COMPLETED
+  CANCELLED
+}
+
 enum PaymentStatus {
   PAID
   PARTIAL
@@ -70,6 +75,7 @@ model User {
   stockHistories StockHistory[] @relation("StockHistoryCreatedBy")
   purchases      Purchase[]     @relation("PurchaseCreatedBy")
   sales          Sale[]         @relation("SaleCreatedBy")
+  stockOpnames   StockOpname[]  @relation("StockOpnameCreatedBy")
 
   @@map("users")
 }
@@ -101,10 +107,11 @@ model Product {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  category       Category       @relation(fields: [categoryId], references: [id])
-  stockHistories StockHistory[]
-  purchaseItems  PurchaseItem[]
-  saleItems      SaleItem[]
+  category         Category          @relation(fields: [categoryId], references: [id])
+  stockHistories   StockHistory[]
+  purchaseItems    PurchaseItem[]
+  saleItems        SaleItem[]
+  stockOpnameItems StockOpnameItem[]
 
   @@map("products")
 }
@@ -154,6 +161,36 @@ model StockHistory {
   createdBy User    @relation("StockHistoryCreatedBy", fields: [createdById], references: [id])
 
   @@map("stock_histories")
+}
+
+model StockOpname {
+  id           String            @id @default(uuid()) @db.Uuid
+  opnameNumber String            @unique @map("opname_number")
+  status       StockOpnameStatus @default(COMPLETED)
+  note         String?
+  createdById  String            @map("created_by_id") @db.Uuid
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  createdBy User              @relation("StockOpnameCreatedBy", fields: [createdById], references: [id])
+  items     StockOpnameItem[]
+
+  @@map("stock_opnames")
+}
+
+model StockOpnameItem {
+  id            String  @id @default(uuid()) @db.Uuid
+  stockOpnameId String  @map("stock_opname_id") @db.Uuid
+  productId     String  @map("product_id") @db.Uuid
+  systemStock   Int     @map("system_stock")
+  physicalStock Int     @map("physical_stock")
+  difference    Int
+  note          String?
+
+  stockOpname StockOpname @relation(fields: [stockOpnameId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@map("stock_opname_items")
 }
 
 model Purchase {

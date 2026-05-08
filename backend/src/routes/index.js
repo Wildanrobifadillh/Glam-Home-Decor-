@@ -8,6 +8,7 @@ const inventoryRoutes = require("../modules/inventory/inventory.routes");
 const purchaseRoutes = require("../modules/purchase/purchase.routes");
 const saleRoutes = require("../modules/sale/sale.routes");
 const customerRoutes = require("../modules/customer/customer.routes");
+const stockOpnameRoutes = require("../modules/stock-opname/stock-opname.routes");
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.use("/inventory", inventoryRoutes);
 router.use("/purchases", purchaseRoutes);
 router.use("/sales", saleRoutes);
 router.use("/customers", customerRoutes);
+router.use("/stock-opnames", stockOpnameRoutes);
 
 module.exports = router;
