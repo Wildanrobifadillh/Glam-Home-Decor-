@@ -23,6 +23,13 @@ enum MasterStatus {
   INACTIVE
 }
 
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  DAMAGED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -32,6 +39,8 @@ model User {
   status       UserStatus @default(ACTIVE)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  stockHistories StockHistory[] @relation("StockHistoryCreatedBy")
 
   @@map("users")
 }
@@ -63,7 +72,26 @@ model Product {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  category Category @relation(fields: [categoryId], references: [id])
+  category       Category       @relation(fields: [categoryId], references: [id])
+  stockHistories StockHistory[]
 
   @@map("products")
+}
+
+model StockHistory {
+  id             String            @id @default(uuid()) @db.Uuid
+  movementNumber String            @unique @map("movement_number")
+  productId      String            @map("product_id") @db.Uuid
+  type           StockMovementType
+  quantity       Int
+  stockBefore    Int               @map("stock_before")
+  stockAfter     Int               @map("stock_after")
+  note           String?
+  createdById    String            @map("created_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User    @relation("StockHistoryCreatedBy", fields: [createdById], references: [id])
+
+  @@map("stock_histories")
 }
