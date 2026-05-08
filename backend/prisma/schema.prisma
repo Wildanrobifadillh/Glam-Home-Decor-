@@ -35,6 +35,17 @@ enum PurchaseStatus {
   CANCELLED
 }
 
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -47,6 +58,7 @@ model User {
 
   stockHistories StockHistory[] @relation("StockHistoryCreatedBy")
   purchases      Purchase[]     @relation("PurchaseCreatedBy")
+  sales          Sale[]         @relation("SaleCreatedBy")
 
   @@map("users")
 }
@@ -81,6 +93,7 @@ model Product {
   category       Category       @relation(fields: [categoryId], references: [id])
   stockHistories StockHistory[]
   purchaseItems  PurchaseItem[]
+  saleItems      SaleItem[]
 
   @@map("products")
 }
@@ -147,4 +160,39 @@ model PurchaseItem {
   product  Product  @relation(fields: [productId], references: [id])
 
   @@map("purchase_items")
+}
+
+model Sale {
+  id              String        @id @default(uuid()) @db.Uuid
+  saleNumber      String        @unique @map("sale_number")
+  customerName    String?       @map("customer_name")
+  customerPhone   String?       @map("customer_phone")
+  totalAmount     Int           @map("total_amount")
+  paidAmount      Int           @default(0) @map("paid_amount")
+  remainingAmount Int           @map("remaining_amount")
+  paymentStatus   PaymentStatus @map("payment_status")
+  status          SaleStatus    @default(COMPLETED)
+  note            String?
+  createdById     String        @map("created_by_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  createdBy User       @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  items     SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id           String @id @default(uuid()) @db.Uuid
+  saleId       String @map("sale_id") @db.Uuid
+  productId    String @map("product_id") @db.Uuid
+  quantity     Int
+  sellingPrice Int    @map("selling_price")
+  subtotal     Int
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
 }
