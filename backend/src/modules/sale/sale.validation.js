@@ -56,6 +56,16 @@ const createSaleSchema = z.object({
     ),
 });
 
+const approveSaleSchema = z.object({
+  note: z.string().trim().optional(),
+});
+
+const rejectSaleSchema = z.object({
+  note: z.string().trim().optional(),
+});
+
 module.exports = {
   createSaleSchema,
+  approveSaleSchema,
+  rejectSaleSchema,
 };

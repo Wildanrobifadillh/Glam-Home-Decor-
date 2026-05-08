@@ -16,4 +16,18 @@ router.post(
   saleController.createSale
 );
 
+router.patch(
+  "/:id/approve",
+  authenticate,
+  authorizeRoles("OWNER"),
+  saleController.approveSale
+);
+
+router.patch(
+  "/:id/reject",
+  authenticate,
+  authorizeRoles("OWNER"),
+  saleController.rejectSale
+);
+
 module.exports = router;

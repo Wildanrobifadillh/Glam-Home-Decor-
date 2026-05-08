@@ -36,7 +36,9 @@ enum PurchaseStatus {
 }
 
 enum SaleStatus {
+  PENDING_APPROVAL
   COMPLETED
+  REJECTED
   CANCELLED
 }
 
@@ -72,6 +74,11 @@ enum ReturnItemCondition {
   DAMAGED
 }
 
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -82,12 +89,14 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  stockHistories  StockHistory[]   @relation("StockHistoryCreatedBy")
-  purchases       Purchase[]       @relation("PurchaseCreatedBy")
-  sales           Sale[]           @relation("SaleCreatedBy")
-  stockOpnames    StockOpname[]    @relation("StockOpnameCreatedBy")
-  saleReturns     SaleReturn[]     @relation("SaleReturnCreatedBy")
-  purchaseReturns PurchaseReturn[] @relation("PurchaseReturnCreatedBy")
+  stockHistories        StockHistory[]        @relation("StockHistoryCreatedBy")
+  purchases             Purchase[]            @relation("PurchaseCreatedBy")
+  sales                 Sale[]                @relation("SaleCreatedBy")
+  stockOpnames          StockOpname[]         @relation("StockOpnameCreatedBy")
+  saleReturns           SaleReturn[]          @relation("SaleReturnCreatedBy")
+  purchaseReturns       PurchaseReturn[]      @relation("PurchaseReturnCreatedBy")
+  saleApprovalHistories SaleApprovalHistory[] @relation("SaleApprovalHistoryCreatedBy")
+  receivablePayments    ReceivablePayment[]   @relation("ReceivablePaymentCreatedBy")
 
   @@map("users")
 }
@@ -294,10 +303,12 @@ model Sale {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  customer    Customer?    @relation(fields: [customerId], references: [id])
-  createdBy   User         @relation("SaleCreatedBy", fields: [createdById], references: [id])
-  items       SaleItem[]
-  saleReturns SaleReturn[]
+  customer           Customer?             @relation(fields: [customerId], references: [id])
+  createdBy          User                  @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  items              SaleItem[]
+  saleReturns        SaleReturn[]
+  approvalHistories  SaleApprovalHistory[]
+  receivablePayments ReceivablePayment[]
 
   @@map("sales")
 }
@@ -350,4 +361,33 @@ model SaleReturnItem {
   product    Product    @relation(fields: [productId], references: [id])
 
   @@map("sale_return_items")
+}
+
+model SaleApprovalHistory {
+  id          String         @id @default(uuid()) @db.Uuid
+  saleId      String         @map("sale_id") @db.Uuid
+  action      ApprovalAction
+  note        String?
+  createdById String         @map("created_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  sale      Sale @relation(fields: [saleId], references: [id])
+  createdBy User @relation("SaleApprovalHistoryCreatedBy", fields: [createdById], references: [id])
+
+  @@map("sale_approval_histories")
+}
+
+model ReceivablePayment {
+  id            String        @id @default(uuid()) @db.Uuid
+  saleId        String        @map("sale_id") @db.Uuid
+  amount        Int
+  paymentMethod PaymentMethod @default(CASH) @map("payment_method")
+  note          String?
+  createdById   String        @map("created_by_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  sale      Sale @relation(fields: [saleId], references: [id])
+  createdBy User @relation("ReceivablePaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@map("receivable_payments")
 }
