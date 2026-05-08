@@ -344,24 +344,26 @@ model PurchaseReturnItem {
 }
 
 model Sale {
-  id              String        @id @default(uuid()) @db.Uuid
-  saleNumber      String        @unique @map("sale_number")
-  customerId      String?       @map("customer_id") @db.Uuid
-  customerName    String?       @map("customer_name")
-  customerPhone   String?       @map("customer_phone")
-  totalAmount     Int           @map("total_amount")
-  paidAmount      Int           @default(0) @map("paid_amount")
-  remainingAmount Int           @map("remaining_amount")
-  paymentStatus   PaymentStatus @map("payment_status")
-  paymentMethod   PaymentMethod @default(CASH) @map("payment_method")
-  status          SaleStatus    @default(COMPLETED)
-  note            String?
-  createdById     String        @map("created_by_id") @db.Uuid
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                String        @id @default(uuid()) @db.Uuid
+  saleNumber        String        @unique @map("sale_number")
+  customerId        String?       @map("customer_id") @db.Uuid
+  customerName      String?       @map("customer_name")
+  customerPhone     String?       @map("customer_phone")
+  totalAmount       Int           @map("total_amount")
+  paidAmount        Int           @default(0) @map("paid_amount")
+  remainingAmount   Int           @map("remaining_amount")
+  paymentStatus     PaymentStatus @map("payment_status")
+  paymentMethod     PaymentMethod @default(CASH) @map("payment_method")
+  cashBankAccountId String?       @map("cash_bank_account_id") @db.Uuid
+  status            SaleStatus    @default(COMPLETED)
+  note              String?
+  createdById       String        @map("created_by_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   customer           Customer?             @relation(fields: [customerId], references: [id])
   createdBy          User                  @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  cashBankAccount    CashBankAccount?      @relation("SaleCashBankAccount", fields: [cashBankAccountId], references: [id])
   items              SaleItem[]
   saleReturns        SaleReturn[]
   approvalHistories  SaleApprovalHistory[]
@@ -435,16 +437,18 @@ model SaleApprovalHistory {
 }
 
 model ReceivablePayment {
-  id            String        @id @default(uuid()) @db.Uuid
-  saleId        String        @map("sale_id") @db.Uuid
-  amount        Int
-  paymentMethod PaymentMethod @default(CASH) @map("payment_method")
-  note          String?
-  createdById   String        @map("created_by_id") @db.Uuid
-  createdAt     DateTime      @default(now()) @map("created_at")
+  id                String        @id @default(uuid()) @db.Uuid
+  saleId            String        @map("sale_id") @db.Uuid
+  amount            Int
+  paymentMethod     PaymentMethod @default(CASH) @map("payment_method")
+  cashBankAccountId String?       @map("cash_bank_account_id") @db.Uuid
+  note              String?
+  createdById       String        @map("created_by_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
 
-  sale      Sale @relation(fields: [saleId], references: [id])
-  createdBy User @relation("ReceivablePaymentCreatedBy", fields: [createdById], references: [id])
+  sale            Sale             @relation(fields: [saleId], references: [id])
+  cashBankAccount CashBankAccount? @relation("ReceivablePaymentCashBankAccount", fields: [cashBankAccountId], references: [id])
+  createdBy       User             @relation("ReceivablePaymentCreatedBy", fields: [createdById], references: [id])
 
   @@map("receivable_payments")
 }
@@ -481,6 +485,9 @@ model CashBankAccount {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   account Account @relation(fields: [accountId], references: [id])
+
+  sales              Sale[]              @relation("SaleCashBankAccount")
+  receivablePayments ReceivablePayment[] @relation("ReceivablePaymentCashBankAccount")
 
   @@map("cash_bank_accounts")
 }

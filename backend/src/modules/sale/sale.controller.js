@@ -112,6 +112,7 @@ const paySale = async (req, res, next) => {
       saleId: req.params.id,
       amount: validatedData.amount,
       paymentMethod: validatedData.paymentMethod,
+      cashBankAccountId: validatedData.cashBankAccountId,
       note: validatedData.note,
       createdById: req.user.id,
     });

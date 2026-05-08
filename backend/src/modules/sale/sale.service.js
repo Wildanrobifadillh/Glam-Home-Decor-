@@ -1,5 +1,10 @@
 const prisma = require("../../config/prisma");
 const { generateSaleNumber } = require("../../utils/generateSaleNumber");
+const {
+  createJournalEntryWithLines,
+  getAccountByCode,
+  getCashBankAccountForPayment,
+} = require("../../utils/accountingJournal");
 
 const getPaymentStatus = (totalAmount, paidAmount) => {
   if (paidAmount === 0) {
@@ -56,10 +61,127 @@ const createSaleStockHistories = async ({ tx, sale, items, createdById }) => {
   }
 };
 
+const createSaleJournal = async ({
+  tx,
+  sale,
+  saleItems,
+  cashBankAccountId,
+  paymentMethod,
+  createdById,
+}) => {
+  const salesRevenueAccount = await getAccountByCode(tx, "4101");
+  const cogsAccount = await getAccountByCode(tx, "5101");
+  const inventoryAccount = await getAccountByCode(tx, "1301");
+
+  const lines = [];
+
+  if (sale.paidAmount > 0) {
+    const cashBankAccount = await getCashBankAccountForPayment(
+      tx,
+      cashBankAccountId,
+      paymentMethod
+    );
+
+    lines.push({
+      accountId: cashBankAccount.accountId,
+      debit: sale.paidAmount,
+      credit: 0,
+      note: `Pembayaran penjualan ${sale.saleNumber}`,
+    });
+  }
+
+  if (sale.remainingAmount > 0) {
+    const receivableAccount = await getAccountByCode(tx, "1201");
+
+    lines.push({
+      accountId: receivableAccount.id,
+      debit: sale.remainingAmount,
+      credit: 0,
+      note: `Piutang penjualan ${sale.saleNumber}`,
+    });
+  }
+
+  lines.push({
+    accountId: salesRevenueAccount.id,
+    debit: 0,
+    credit: sale.totalAmount,
+    note: `Penjualan ${sale.saleNumber}`,
+  });
+
+  const totalCost = saleItems.reduce((total, item) => {
+    return total + item.costPrice * item.quantity;
+  }, 0);
+
+  if (totalCost > 0) {
+    lines.push({
+      accountId: cogsAccount.id,
+      debit: totalCost,
+      credit: 0,
+      note: `HPP penjualan ${sale.saleNumber}`,
+    });
+
+    lines.push({
+      accountId: inventoryAccount.id,
+      debit: 0,
+      credit: totalCost,
+      note: `Pengurangan persediaan penjualan ${sale.saleNumber}`,
+    });
+  }
+
+  await createJournalEntryWithLines({
+    tx,
+    description: `Jurnal penjualan ${sale.saleNumber}`,
+    sourceType: "SALE",
+    sourceId: sale.id,
+    lines,
+    createdById,
+  });
+};
+
+const createReceivablePaymentJournal = async ({
+  tx,
+  sale,
+  amount,
+  paymentMethod,
+  cashBankAccountId,
+  createdById,
+}) => {
+  const cashBankAccount = await getCashBankAccountForPayment(
+    tx,
+    cashBankAccountId,
+    paymentMethod
+  );
+
+  const receivableAccount = await getAccountByCode(tx, "1201");
+
+  await createJournalEntryWithLines({
+    tx,
+    description: `Pembayaran piutang ${sale.saleNumber}`,
+    sourceType: "RECEIVABLE_PAYMENT",
+    sourceId: sale.id,
+    lines: [
+      {
+        accountId: cashBankAccount.accountId,
+        debit: amount,
+        credit: 0,
+        note: `Kas/bank masuk pembayaran piutang ${sale.saleNumber}`,
+      },
+      {
+        accountId: receivableAccount.id,
+        debit: 0,
+        credit: amount,
+        note: `Pengurangan piutang ${sale.saleNumber}`,
+      },
+    ],
+    createdById,
+  });
+};
+
 const getAllSales = async () => {
   return prisma.sale.findMany({
     include: {
       customer: true,
+      cashBankAccount: true,
       createdBy: {
         select: {
           id: true,
@@ -87,6 +209,7 @@ const getAllSales = async () => {
       },
       receivablePayments: {
         include: {
+          cashBankAccount: true,
           createdBy: {
             select: {
               id: true,
@@ -111,6 +234,7 @@ const getSaleById = async (id) => {
     },
     include: {
       customer: true,
+      cashBankAccount: true,
       createdBy: {
         select: {
           id: true,
@@ -145,6 +269,7 @@ const getSaleById = async (id) => {
       },
       receivablePayments: {
         include: {
+          cashBankAccount: true,
           createdBy: {
             select: {
               id: true,
@@ -176,6 +301,7 @@ const createSale = async ({
   customerPhone,
   paidAmount,
   paymentMethod,
+  cashBankAccountId,
   note,
   items,
   createdById,
@@ -202,6 +328,14 @@ const createSale = async ({
         error.status = 400;
         throw error;
       }
+    }
+
+    if (paidAmount > 0) {
+      await getCashBankAccountForPayment(
+        tx,
+        cashBankAccountId,
+        paymentMethod
+      );
     }
 
     const productIds = items.map((item) => item.productId);
@@ -263,12 +397,9 @@ const createSale = async ({
     const saleNumber = generateSaleNumber();
 
     const isReceivable = remainingAmount > 0;
-    const needsOwnerApproval =
-      isReceivable && createdByRole !== "OWNER";
+    const needsOwnerApproval = isReceivable && createdByRole !== "OWNER";
 
-    const saleStatus = needsOwnerApproval
-      ? "PENDING_APPROVAL"
-      : "COMPLETED";
+    const saleStatus = needsOwnerApproval ? "PENDING_APPROVAL" : "COMPLETED";
 
     const sale = await tx.sale.create({
       data: {
@@ -281,6 +412,7 @@ const createSale = async ({
         remainingAmount,
         paymentStatus,
         paymentMethod,
+        cashBankAccountId,
         status: saleStatus,
         note,
         createdById,
@@ -300,6 +432,15 @@ const createSale = async ({
         items,
         createdById,
       });
+
+      await createSaleJournal({
+        tx,
+        sale,
+        saleItems: saleItemsData,
+        cashBankAccountId,
+        paymentMethod,
+        createdById,
+      });
     }
 
     return tx.sale.findUnique({
@@ -308,6 +449,7 @@ const createSale = async ({
       },
       include: {
         customer: true,
+        cashBankAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -362,6 +504,15 @@ const approveSale = async ({ saleId, note, createdById }) => {
       createdById,
     });
 
+    await createSaleJournal({
+      tx,
+      sale,
+      saleItems: sale.items,
+      cashBankAccountId: sale.cashBankAccountId,
+      paymentMethod: sale.paymentMethod,
+      createdById,
+    });
+
     await tx.sale.update({
       where: {
         id: saleId,
@@ -386,6 +537,7 @@ const approveSale = async ({ saleId, note, createdById }) => {
       },
       include: {
         customer: true,
+        cashBankAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -460,6 +612,7 @@ const rejectSale = async ({ saleId, note, createdById }) => {
       },
       include: {
         customer: true,
+        cashBankAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -490,7 +643,14 @@ const rejectSale = async ({ saleId, note, createdById }) => {
   });
 };
 
-const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => {
+const paySale = async ({
+  saleId,
+  amount,
+  paymentMethod,
+  cashBankAccountId,
+  note,
+  createdById,
+}) => {
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findUnique({
       where: {
@@ -522,6 +682,8 @@ const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => 
       throw error;
     }
 
+    await getCashBankAccountForPayment(tx, cashBankAccountId, paymentMethod);
+
     const newPaidAmount = sale.paidAmount + amount;
     const newRemainingAmount = sale.remainingAmount - amount;
     const newPaymentStatus = getPaymentStatus(sale.totalAmount, newPaidAmount);
@@ -531,6 +693,7 @@ const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => 
         saleId,
         amount,
         paymentMethod,
+        cashBankAccountId,
         note,
         createdById,
       },
@@ -547,12 +710,22 @@ const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => 
       },
     });
 
+    await createReceivablePaymentJournal({
+      tx,
+      sale,
+      amount,
+      paymentMethod,
+      cashBankAccountId,
+      createdById,
+    });
+
     return tx.sale.findUnique({
       where: {
         id: saleId,
       },
       include: {
         customer: true,
+        cashBankAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -587,6 +760,7 @@ const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => 
         },
         receivablePayments: {
           include: {
+            cashBankAccount: true,
             createdBy: {
               select: {
                 id: true,

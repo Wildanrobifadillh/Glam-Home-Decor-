@@ -22,39 +22,58 @@ const saleItemSchema = z.object({
     .nonnegative("Selling price cannot be negative"),
 });
 
-const createSaleSchema = z.object({
-  customerId: z.string().uuid("Invalid customer ID").optional(),
+const createSaleSchema = z
+  .object({
+    customerId: z.string().uuid("Invalid customer ID").optional(),
 
-  customerName: z.string().trim().optional(),
+    customerName: z.string().trim().optional(),
 
-  customerPhone: z.string().trim().optional(),
+    customerPhone: z.string().trim().optional(),
 
-  paidAmount: z.coerce
-    .number()
-    .int("Paid amount must be an integer")
-    .nonnegative("Paid amount cannot be negative")
-    .optional()
-    .default(0),
+    paidAmount: z.coerce
+      .number()
+      .int("Paid amount must be an integer")
+      .nonnegative("Paid amount cannot be negative")
+      .optional()
+      .default(0),
 
-  paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
+    paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
 
-  note: z.string().trim().optional(),
+    cashBankAccountId: z
+      .string()
+      .uuid("Invalid cash/bank account ID")
+      .optional(),
 
-  items: z
-    .array(saleItemSchema)
-    .min(1, "Sale must have at least one item")
-    .refine(
-      (items) => {
-        const productIds = items.map((item) => item.productId);
-        const uniqueProductIds = new Set(productIds);
+    note: z.string().trim().optional(),
 
-        return productIds.length === uniqueProductIds.size;
-      },
-      {
-        message: "Duplicate product is not allowed in one sale",
+    items: z
+      .array(saleItemSchema)
+      .min(1, "Sale must have at least one item")
+      .refine(
+        (items) => {
+          const productIds = items.map((item) => item.productId);
+          const uniqueProductIds = new Set(productIds);
+
+          return productIds.length === uniqueProductIds.size;
+        },
+        {
+          message: "Duplicate product is not allowed in one sale",
+        }
+      ),
+  })
+  .refine(
+    (data) => {
+      if (data.paidAmount > 0) {
+        return Boolean(data.cashBankAccountId);
       }
-    ),
-});
+
+      return true;
+    },
+    {
+      field: "cashBankAccountId",
+      message: "Cash/bank account is required when paid amount is greater than 0",
+    }
+  );
 
 const approveSaleSchema = z.object({
   note: z.string().trim().optional(),
@@ -73,6 +92,12 @@ const paySaleSchema = z.object({
     .positive("Payment amount must be greater than 0"),
 
   paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
+
+  cashBankAccountId: z
+    .string({
+      required_error: "Cash/bank account is required",
+    })
+    .uuid("Invalid cash/bank account ID"),
 
   note: z.string().trim().optional(),
 });
