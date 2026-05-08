@@ -97,6 +97,7 @@ model User {
   purchaseReturns       PurchaseReturn[]      @relation("PurchaseReturnCreatedBy")
   saleApprovalHistories SaleApprovalHistory[] @relation("SaleApprovalHistoryCreatedBy")
   receivablePayments    ReceivablePayment[]   @relation("ReceivablePaymentCreatedBy")
+  employee              Employee?
 
   @@map("users")
 }
@@ -166,6 +167,24 @@ model Customer {
   sales Sale[]
 
   @@map("customers")
+}
+
+model Employee {
+  id         String       @id @default(uuid()) @db.Uuid
+  userId     String?      @unique @map("user_id") @db.Uuid
+  name       String
+  phone      String?
+  address    String?
+  position   String
+  baseSalary Int          @default(0) @map("base_salary")
+  joinedAt   DateTime?    @map("joined_at")
+  status     MasterStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("employees")
 }
 
 model StockHistory {

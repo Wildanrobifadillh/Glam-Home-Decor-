@@ -11,6 +11,7 @@ const customerRoutes = require("../modules/customer/customer.routes");
 const stockOpnameRoutes = require("../modules/stock-opname/stock-opname.routes");
 const saleReturnRoutes = require("../modules/sale-return/sale-return.routes");
 const purchaseReturnRoutes = require("../modules/purchase-return/purchase-return.routes");
+const employeeRoutes = require("../modules/employee/employee.routes");
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use("/customers", customerRoutes);
 router.use("/stock-opnames", stockOpnameRoutes);
 router.use("/sale-returns", saleReturnRoutes);
 router.use("/purchase-returns", purchaseReturnRoutes);
+router.use("/employees", employeeRoutes);
 
 module.exports = router;
