@@ -3,6 +3,7 @@ const {
   createSaleSchema,
   approveSaleSchema,
   rejectSaleSchema,
+  paySaleSchema,
 } = require("./sale.validation");
 
 const getAllSales = async (req, res, next) => {
@@ -103,10 +104,35 @@ const rejectSale = async (req, res, next) => {
   }
 };
 
+const paySale = async (req, res, next) => {
+  try {
+    const validatedData = paySaleSchema.parse(req.body);
+
+    const sale = await saleService.paySale({
+      saleId: req.params.id,
+      amount: validatedData.amount,
+      paymentMethod: validatedData.paymentMethod,
+      note: validatedData.note,
+      createdById: req.user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale payment recorded successfully",
+      data: {
+        sale,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
   createSale,
   approveSale,
   rejectSale,
+  paySale,
 };

@@ -16,6 +16,13 @@ router.post(
   saleController.createSale
 );
 
+router.post(
+  "/:id/payments",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  saleController.paySale
+);
+
 router.patch(
   "/:id/approve",
   authenticate,

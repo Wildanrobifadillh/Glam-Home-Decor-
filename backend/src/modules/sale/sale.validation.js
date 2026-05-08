@@ -64,8 +64,22 @@ const rejectSaleSchema = z.object({
   note: z.string().trim().optional(),
 });
 
+const paySaleSchema = z.object({
+  amount: z.coerce
+    .number({
+      required_error: "Payment amount is required",
+    })
+    .int("Payment amount must be an integer")
+    .positive("Payment amount must be greater than 0"),
+
+  paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
+
+  note: z.string().trim().optional(),
+});
+
 module.exports = {
   createSaleSchema,
   approveSaleSchema,
   rejectSaleSchema,
+  paySaleSchema,
 };

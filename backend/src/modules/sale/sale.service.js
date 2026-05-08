@@ -490,10 +490,126 @@ const rejectSale = async ({ saleId, note, createdById }) => {
   });
 };
 
+const paySale = async ({ saleId, amount, paymentMethod, note, createdById }) => {
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("Sale not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (sale.status !== "COMPLETED") {
+      const error = new Error("Only completed sale can receive payment");
+      error.status = 400;
+      throw error;
+    }
+
+    if (sale.remainingAmount <= 0) {
+      const error = new Error("Sale is already fully paid");
+      error.status = 400;
+      throw error;
+    }
+
+    if (amount > sale.remainingAmount) {
+      const error = new Error("Payment amount cannot exceed remaining amount");
+      error.status = 400;
+      throw error;
+    }
+
+    const newPaidAmount = sale.paidAmount + amount;
+    const newRemainingAmount = sale.remainingAmount - amount;
+    const newPaymentStatus = getPaymentStatus(sale.totalAmount, newPaidAmount);
+
+    await tx.receivablePayment.create({
+      data: {
+        saleId,
+        amount,
+        paymentMethod,
+        note,
+        createdById,
+      },
+    });
+
+    await tx.sale.update({
+      where: {
+        id: saleId,
+      },
+      data: {
+        paidAmount: newPaidAmount,
+        remainingAmount: newRemainingAmount,
+        paymentStatus: newPaymentStatus,
+      },
+    });
+
+    return tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+      include: {
+        customer: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            role: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+        approvalHistories: {
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+        receivablePayments: {
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+  });
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
   createSale,
   approveSale,
   rejectSale,
+  paySale,
 };
