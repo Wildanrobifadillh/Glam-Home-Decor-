@@ -157,15 +157,19 @@ model StockHistory {
 }
 
 model Purchase {
-  id             String         @id @default(uuid()) @db.Uuid
-  purchaseNumber String         @unique @map("purchase_number")
-  supplierId     String         @map("supplier_id") @db.Uuid
-  totalAmount    Int            @map("total_amount")
-  status         PurchaseStatus @default(COMPLETED)
-  note           String?
-  createdById    String         @map("created_by_id") @db.Uuid
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  id                    String         @id @default(uuid()) @db.Uuid
+  purchaseNumber        String         @unique @map("purchase_number")
+  supplierInvoiceNumber String?        @map("supplier_invoice_number")
+  supplierId            String         @map("supplier_id") @db.Uuid
+  totalAmount           Int            @map("total_amount")
+  paidAmount            Int            @default(0) @map("paid_amount")
+  remainingAmount       Int            @default(0) @map("remaining_amount")
+  paymentStatus         PaymentStatus  @default(PAID) @map("payment_status")
+  status                PurchaseStatus @default(COMPLETED)
+  note                  String?
+  createdById           String         @map("created_by_id") @db.Uuid
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
 
   supplier  Supplier       @relation(fields: [supplierId], references: [id])
   createdBy User           @relation("PurchaseCreatedBy", fields: [createdById], references: [id])

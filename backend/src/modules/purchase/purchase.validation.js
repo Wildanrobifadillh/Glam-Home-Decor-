@@ -29,6 +29,15 @@ const createPurchaseSchema = z.object({
     })
     .uuid("Invalid supplier ID"),
 
+  supplierInvoiceNumber: z.string().trim().optional(),
+
+  paidAmount: z.coerce
+    .number()
+    .int("Paid amount must be an integer")
+    .nonnegative("Paid amount cannot be negative")
+    .optional()
+    .default(0),
+
   note: z.string().trim().optional(),
 
   items: z

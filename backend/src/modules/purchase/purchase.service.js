@@ -1,6 +1,17 @@
 const prisma = require("../../config/prisma");
 const { generatePurchaseNumber } = require("../../utils/generatePurchaseNumber");
-const { generateMovementNumber } = require("../../utils/generateMovementNumber");
+
+const getPaymentStatus = (totalAmount, paidAmount) => {
+  if (paidAmount === 0) {
+    return "UNPAID";
+  }
+
+  if (paidAmount < totalAmount) {
+    return "PARTIAL";
+  }
+
+  return "PAID";
+};
 
 const getAllPurchases = async () => {
   return prisma.purchase.findMany({
@@ -62,7 +73,14 @@ const getPurchaseById = async (id) => {
   return purchase;
 };
 
-const createPurchase = async ({ supplierId, note, items, createdById }) => {
+const createPurchase = async ({
+  supplierId,
+  supplierInvoiceNumber,
+  paidAmount,
+  note,
+  items,
+  createdById,
+}) => {
   return prisma.$transaction(async (tx) => {
     const supplier = await tx.supplier.findUnique({
       where: {
@@ -86,17 +104,17 @@ const createPurchase = async ({ supplierId, note, items, createdById }) => {
     const uniqueProductIds = [...new Set(productIds)];
 
     const products = await tx.product.findMany({
-    where: {
+      where: {
         id: {
-        in: uniqueProductIds,
+          in: uniqueProductIds,
         },
-    },
+      },
     });
 
     if (products.length !== uniqueProductIds.length) {
-    const error = new Error("One or more products were not found");
-    error.status = 404;
-    throw error;
+      const error = new Error("One or more products were not found");
+      error.status = 404;
+      throw error;
     }
 
     for (const product of products) {
@@ -121,13 +139,25 @@ const createPurchase = async ({ supplierId, note, items, createdById }) => {
       };
     });
 
+    if (paidAmount > totalAmount) {
+      const error = new Error("Paid amount cannot exceed total amount");
+      error.status = 400;
+      throw error;
+    }
+
+    const remainingAmount = totalAmount - paidAmount;
+    const paymentStatus = getPaymentStatus(totalAmount, paidAmount);
     const purchaseNumber = generatePurchaseNumber();
 
     const purchase = await tx.purchase.create({
       data: {
         purchaseNumber,
+        supplierInvoiceNumber,
         supplierId,
         totalAmount,
+        paidAmount,
+        remainingAmount,
+        paymentStatus,
         note,
         createdById,
         items: {
