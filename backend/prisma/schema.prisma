@@ -30,6 +30,11 @@ enum StockMovementType {
   DAMAGED
 }
 
+enum PurchaseStatus {
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -41,6 +46,7 @@ model User {
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   stockHistories StockHistory[] @relation("StockHistoryCreatedBy")
+  purchases      Purchase[]     @relation("PurchaseCreatedBy")
 
   @@map("users")
 }
@@ -74,6 +80,7 @@ model Product {
 
   category       Category       @relation(fields: [categoryId], references: [id])
   stockHistories StockHistory[]
+  purchaseItems  PurchaseItem[]
 
   @@map("products")
 }
@@ -86,6 +93,8 @@ model Supplier {
   status    MasterStatus @default(ACTIVE)
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
+
+  purchases Purchase[]
 
   @@map("suppliers")
 }
@@ -106,4 +115,36 @@ model StockHistory {
   createdBy User    @relation("StockHistoryCreatedBy", fields: [createdById], references: [id])
 
   @@map("stock_histories")
+}
+
+model Purchase {
+  id             String         @id @default(uuid()) @db.Uuid
+  purchaseNumber String         @unique @map("purchase_number")
+  supplierId     String         @map("supplier_id") @db.Uuid
+  totalAmount    Int            @map("total_amount")
+  status         PurchaseStatus @default(COMPLETED)
+  note           String?
+  createdById    String         @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  supplier  Supplier       @relation(fields: [supplierId], references: [id])
+  createdBy User           @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  items     PurchaseItem[]
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id            String @id @default(uuid()) @db.Uuid
+  purchaseId    String @map("purchase_id") @db.Uuid
+  productId     String @map("product_id") @db.Uuid
+  quantity      Int
+  purchasePrice Int    @map("purchase_price")
+  subtotal      Int
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@map("purchase_items")
 }
