@@ -23,6 +23,8 @@ const saleItemSchema = z.object({
 });
 
 const createSaleSchema = z.object({
+  customerId: z.string().uuid("Invalid customer ID").optional(),
+
   customerName: z.string().trim().optional(),
 
   customerPhone: z.string().trim().optional(),
@@ -33,6 +35,8 @@ const createSaleSchema = z.object({
     .nonnegative("Paid amount cannot be negative")
     .optional()
     .default(0),
+
+  paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
 
   note: z.string().trim().optional(),
 

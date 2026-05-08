@@ -16,6 +16,7 @@ const getPaymentStatus = (totalAmount, paidAmount) => {
 const getAllSales = async () => {
   return prisma.sale.findMany({
     include: {
+      customer: true,
       createdBy: {
         select: {
           id: true,
@@ -42,6 +43,7 @@ const getSaleById = async (id) => {
       id,
     },
     include: {
+      customer: true,
       createdBy: {
         select: {
           id: true,
@@ -72,14 +74,38 @@ const getSaleById = async (id) => {
 };
 
 const createSale = async ({
+  customerId,
   customerName,
   customerPhone,
   paidAmount,
+  paymentMethod,
   note,
   items,
   createdById,
 }) => {
   return prisma.$transaction(async (tx) => {
+    let customer = null;
+
+    if (customerId) {
+      customer = await tx.customer.findUnique({
+        where: {
+          id: customerId,
+        },
+      });
+
+      if (!customer) {
+        const error = new Error("Customer not found");
+        error.status = 404;
+        throw error;
+      }
+
+      if (customer.status !== "ACTIVE") {
+        const error = new Error("Customer is inactive");
+        error.status = 400;
+        throw error;
+      }
+    }
+
     const productIds = items.map((item) => item.productId);
     const uniqueProductIds = [...new Set(productIds)];
 
@@ -108,7 +134,9 @@ const createSale = async ({
     let totalAmount = 0;
 
     const saleItemsData = items.map((item) => {
-      const product = products.find((productItem) => productItem.id === item.productId);
+      const product = products.find(
+        (productItem) => productItem.id === item.productId
+      );
 
       const costPrice = product.purchasePrice;
       const subtotal = item.quantity * item.sellingPrice;
@@ -139,12 +167,14 @@ const createSale = async ({
     const sale = await tx.sale.create({
       data: {
         saleNumber,
-        customerName,
-        customerPhone,
+        customerId,
+        customerName: customerId ? customer.name : customerName,
+        customerPhone: customerId ? customer.phone : customerPhone,
         totalAmount,
         paidAmount,
         remainingAmount,
         paymentStatus,
+        paymentMethod,
         note,
         createdById,
         items: {
@@ -199,6 +229,7 @@ const createSale = async ({
         id: sale.id,
       },
       include: {
+        customer: true,
         createdBy: {
           select: {
             id: true,
