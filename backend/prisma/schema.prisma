@@ -189,6 +189,8 @@ model SaleItem {
   productId    String @map("product_id") @db.Uuid
   quantity     Int
   sellingPrice Int    @map("selling_price")
+  costPrice    Int    @default(0) @map("cost_price")
+  profit       Int    @default(0)
   subtotal     Int
 
   sale    Sale    @relation(fields: [saleId], references: [id])

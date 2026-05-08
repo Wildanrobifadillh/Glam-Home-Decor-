@@ -108,13 +108,20 @@ const createSale = async ({
     let totalAmount = 0;
 
     const saleItemsData = items.map((item) => {
+      const product = products.find((productItem) => productItem.id === item.productId);
+
+      const costPrice = product.purchasePrice;
       const subtotal = item.quantity * item.sellingPrice;
+      const profit = (item.sellingPrice - costPrice) * item.quantity;
+
       totalAmount += subtotal;
 
       return {
         productId: item.productId,
         quantity: item.quantity,
         sellingPrice: item.sellingPrice,
+        costPrice,
+        profit,
         subtotal,
       };
     });
