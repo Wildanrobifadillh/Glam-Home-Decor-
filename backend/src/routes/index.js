@@ -13,6 +13,7 @@ const saleReturnRoutes = require("../modules/sale-return/sale-return.routes");
 const purchaseReturnRoutes = require("../modules/purchase-return/purchase-return.routes");
 const employeeRoutes = require("../modules/employee/employee.routes");
 const accountRoutes = require("../modules/account/account.routes");
+const cashBankAccountRoutes = require("../modules/cash-bank-account/cash-bank-account.routes");
 
 const router = express.Router();
 
@@ -36,5 +37,6 @@ router.use("/sale-returns", saleReturnRoutes);
 router.use("/purchase-returns", purchaseReturnRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/accounts", accountRoutes);
+router.use("/cash-bank-accounts", cashBankAccountRoutes);
 
 module.exports = router;
