@@ -79,6 +79,43 @@ enum ApprovalAction {
   REJECTED
 }
 
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  COGS
+  EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum CashBankType {
+  CASH
+  BANK
+}
+
+enum JournalEntryStatus {
+  POSTED
+  CANCELLED
+}
+
+enum JournalSourceType {
+  MANUAL
+  SALE
+  PURCHASE
+  RECEIVABLE_PAYMENT
+  PAYABLE_PAYMENT
+  EXPENSE
+  PAYROLL
+  SALE_RETURN
+  PURCHASE_RETURN
+  STOCK_OPNAME
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -97,6 +134,7 @@ model User {
   purchaseReturns       PurchaseReturn[]      @relation("PurchaseReturnCreatedBy")
   saleApprovalHistories SaleApprovalHistory[] @relation("SaleApprovalHistoryCreatedBy")
   receivablePayments    ReceivablePayment[]   @relation("ReceivablePaymentCreatedBy")
+  journalEntries        JournalEntry[]        @relation("JournalEntryCreatedBy")
   employee              Employee?
 
   @@map("users")
@@ -409,4 +447,72 @@ model ReceivablePayment {
   createdBy User @relation("ReceivablePaymentCreatedBy", fields: [createdById], references: [id])
 
   @@map("receivable_payments")
+}
+
+model Account {
+  id            String        @id @default(uuid()) @db.Uuid
+  code          String        @unique
+  name          String
+  type          AccountType
+  normalBalance NormalBalance @map("normal_balance")
+  parentId      String?       @map("parent_id") @db.Uuid
+  status        MasterStatus  @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  parent           Account?          @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children         Account[]         @relation("AccountHierarchy")
+  cashBankAccounts CashBankAccount[]
+  journalLines     JournalLine[]
+
+  @@map("accounts")
+}
+
+model CashBankAccount {
+  id             String       @id @default(uuid()) @db.Uuid
+  accountId      String       @map("account_id") @db.Uuid
+  name           String
+  type           CashBankType
+  bankName       String?      @map("bank_name")
+  accountNumber  String?      @map("account_number")
+  currentBalance Int          @default(0) @map("current_balance")
+  status         MasterStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@map("cash_bank_accounts")
+}
+
+model JournalEntry {
+  id          String             @id @default(uuid()) @db.Uuid
+  entryNumber String             @unique @map("entry_number")
+  entryDate   DateTime           @default(now()) @map("entry_date")
+  description String?
+  sourceType  JournalSourceType  @default(MANUAL) @map("source_type")
+  sourceId    String?            @map("source_id") @db.Uuid
+  status      JournalEntryStatus @default(POSTED)
+  createdById String             @map("created_by_id") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  createdBy User          @relation("JournalEntryCreatedBy", fields: [createdById], references: [id])
+  lines     JournalLine[]
+
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id             String  @id @default(uuid()) @db.Uuid
+  journalEntryId String  @map("journal_entry_id") @db.Uuid
+  accountId      String  @map("account_id") @db.Uuid
+  debit          Int     @default(0)
+  credit         Int     @default(0)
+  note           String?
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@map("journal_lines")
 }
