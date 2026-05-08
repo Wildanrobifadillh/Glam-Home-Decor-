@@ -14,6 +14,7 @@ const purchaseReturnRoutes = require("../modules/purchase-return/purchase-return
 const employeeRoutes = require("../modules/employee/employee.routes");
 const accountRoutes = require("../modules/account/account.routes");
 const cashBankAccountRoutes = require("../modules/cash-bank-account/cash-bank-account.routes");
+const journalEntryRoutes = require("../modules/journal-entry/journal-entry.routes");
 
 const router = express.Router();
 
@@ -38,5 +39,6 @@ router.use("/purchase-returns", purchaseReturnRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/accounts", accountRoutes);
 router.use("/cash-bank-accounts", cashBankAccountRoutes);
+router.use("/journal-entries", journalEntryRoutes);
 
 module.exports = router;

@@ -1,0 +1,19 @@
+const express = require("express");
+
+const journalEntryController = require("./journal-entry.controller");
+const { authenticate } = require("../../middlewares/auth.middleware");
+const { authorizeRoles } = require("../../middlewares/role.middleware");
+
+const router = express.Router();
+
+router.get("/", authenticate, journalEntryController.getAllJournalEntries);
+router.get("/:id", authenticate, journalEntryController.getJournalEntryById);
+
+router.post(
+  "/",
+  authenticate,
+  authorizeRoles("OWNER"),
+  journalEntryController.createJournalEntry
+);
+
+module.exports = router;
