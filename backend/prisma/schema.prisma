@@ -62,6 +62,16 @@ enum CustomerType {
   RESELLER
 }
 
+enum ReturnStatus {
+  COMPLETED
+  CANCELLED
+}
+
+enum ReturnItemCondition {
+  SALEABLE
+  DAMAGED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -76,6 +86,7 @@ model User {
   purchases      Purchase[]     @relation("PurchaseCreatedBy")
   sales          Sale[]         @relation("SaleCreatedBy")
   stockOpnames   StockOpname[]  @relation("StockOpnameCreatedBy")
+  saleReturns    SaleReturn[]   @relation("SaleReturnCreatedBy")
 
   @@map("users")
 }
@@ -112,6 +123,7 @@ model Product {
   purchaseItems    PurchaseItem[]
   saleItems        SaleItem[]
   stockOpnameItems StockOpnameItem[]
+  saleReturnItems  SaleReturnItem[]
 
   @@map("products")
 }
@@ -246,9 +258,10 @@ model Sale {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  customer  Customer?  @relation(fields: [customerId], references: [id])
-  createdBy User       @relation("SaleCreatedBy", fields: [createdById], references: [id])
-  items     SaleItem[]
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  createdBy   User         @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  items       SaleItem[]
+  saleReturns SaleReturn[]
 
   @@map("sales")
 }
@@ -267,4 +280,38 @@ model SaleItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("sale_items")
+}
+
+model SaleReturn {
+  id           String       @id @default(uuid()) @db.Uuid
+  returnNumber String       @unique @map("return_number")
+  saleId       String       @map("sale_id") @db.Uuid
+  totalAmount  Int          @map("total_amount")
+  status       ReturnStatus @default(COMPLETED)
+  note         String?
+  createdById  String       @map("created_by_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  sale      Sale             @relation(fields: [saleId], references: [id])
+  createdBy User             @relation("SaleReturnCreatedBy", fields: [createdById], references: [id])
+  items     SaleReturnItem[]
+
+  @@map("sale_returns")
+}
+
+model SaleReturnItem {
+  id           String              @id @default(uuid()) @db.Uuid
+  saleReturnId String              @map("sale_return_id") @db.Uuid
+  productId    String              @map("product_id") @db.Uuid
+  quantity     Int
+  sellingPrice Int                 @map("selling_price")
+  subtotal     Int
+  condition    ReturnItemCondition @default(SALEABLE)
+  note         String?
+
+  saleReturn SaleReturn @relation(fields: [saleReturnId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
+
+  @@map("sale_return_items")
 }
