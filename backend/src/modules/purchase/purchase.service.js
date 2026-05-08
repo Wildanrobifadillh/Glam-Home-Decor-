@@ -218,7 +218,31 @@ const createPurchase = async ({
       });
     }
 
-    return purchase;
+    return tx.purchase.findUnique({
+      where: {
+        id: purchase.id,
+      },
+      include: {
+        supplier: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            role: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+      },
+    });
   });
 };
 

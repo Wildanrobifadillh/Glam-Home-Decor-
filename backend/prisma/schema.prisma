@@ -82,11 +82,12 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  stockHistories StockHistory[] @relation("StockHistoryCreatedBy")
-  purchases      Purchase[]     @relation("PurchaseCreatedBy")
-  sales          Sale[]         @relation("SaleCreatedBy")
-  stockOpnames   StockOpname[]  @relation("StockOpnameCreatedBy")
-  saleReturns    SaleReturn[]   @relation("SaleReturnCreatedBy")
+  stockHistories  StockHistory[]   @relation("StockHistoryCreatedBy")
+  purchases       Purchase[]       @relation("PurchaseCreatedBy")
+  sales           Sale[]           @relation("SaleCreatedBy")
+  stockOpnames    StockOpname[]    @relation("StockOpnameCreatedBy")
+  saleReturns     SaleReturn[]     @relation("SaleReturnCreatedBy")
+  purchaseReturns PurchaseReturn[] @relation("PurchaseReturnCreatedBy")
 
   @@map("users")
 }
@@ -118,12 +119,13 @@ model Product {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  category         Category          @relation(fields: [categoryId], references: [id])
-  stockHistories   StockHistory[]
-  purchaseItems    PurchaseItem[]
-  saleItems        SaleItem[]
-  stockOpnameItems StockOpnameItem[]
-  saleReturnItems  SaleReturnItem[]
+  category            Category             @relation(fields: [categoryId], references: [id])
+  stockHistories      StockHistory[]
+  purchaseItems       PurchaseItem[]
+  saleItems           SaleItem[]
+  stockOpnameItems    StockOpnameItem[]
+  saleReturnItems     SaleReturnItem[]
+  purchaseReturnItems PurchaseReturnItem[]
 
   @@map("products")
 }
@@ -220,9 +222,10 @@ model Purchase {
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")
 
-  supplier  Supplier       @relation(fields: [supplierId], references: [id])
-  createdBy User           @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  items     PurchaseItem[]
+  supplier        Supplier         @relation(fields: [supplierId], references: [id])
+  createdBy       User             @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  items           PurchaseItem[]
+  purchaseReturns PurchaseReturn[]
 
   @@map("purchases")
 }
@@ -239,6 +242,39 @@ model PurchaseItem {
   product  Product  @relation(fields: [productId], references: [id])
 
   @@map("purchase_items")
+}
+
+model PurchaseReturn {
+  id           String       @id @default(uuid()) @db.Uuid
+  returnNumber String       @unique @map("return_number")
+  purchaseId   String       @map("purchase_id") @db.Uuid
+  totalAmount  Int          @map("total_amount")
+  status       ReturnStatus @default(COMPLETED)
+  note         String?
+  createdById  String       @map("created_by_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  purchase  Purchase             @relation(fields: [purchaseId], references: [id])
+  createdBy User                 @relation("PurchaseReturnCreatedBy", fields: [createdById], references: [id])
+  items     PurchaseReturnItem[]
+
+  @@map("purchase_returns")
+}
+
+model PurchaseReturnItem {
+  id               String  @id @default(uuid()) @db.Uuid
+  purchaseReturnId String  @map("purchase_return_id") @db.Uuid
+  productId        String  @map("product_id") @db.Uuid
+  quantity         Int
+  purchasePrice    Int     @map("purchase_price")
+  subtotal         Int
+  note             String?
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
+  product        Product        @relation(fields: [productId], references: [id])
+
+  @@map("purchase_return_items")
 }
 
 model Sale {
