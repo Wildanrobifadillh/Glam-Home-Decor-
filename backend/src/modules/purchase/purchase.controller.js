@@ -1,5 +1,8 @@
 const purchaseService = require("./purchase.service");
-const { createPurchaseSchema } = require("./purchase.validation");
+const {
+  createPurchaseSchema,
+  payPurchaseSchema,
+} = require("./purchase.validation");
 
 const getAllPurchases = async (req, res, next) => {
   try {
@@ -54,8 +57,34 @@ const createPurchase = async (req, res, next) => {
   }
 };
 
+const payPurchase = async (req, res, next) => {
+  try {
+    const validatedData = payPurchaseSchema.parse(req.body);
+
+    const purchase = await purchaseService.payPurchase({
+      purchaseId: req.params.id,
+      amount: validatedData.amount,
+      paymentMethod: validatedData.paymentMethod,
+      cashBankAccountId: validatedData.cashBankAccountId,
+      note: validatedData.note,
+      createdById: req.user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Purchase payment recorded successfully",
+      data: {
+        purchase,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllPurchases,
   getPurchaseById,
   createPurchase,
+  payPurchase,
 };

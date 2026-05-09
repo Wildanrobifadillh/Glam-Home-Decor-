@@ -16,4 +16,11 @@ router.post(
   purchaseController.createPurchase
 );
 
+router.post(
+  "/:id/payments",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  purchaseController.payPurchase
+);
+
 module.exports = router;

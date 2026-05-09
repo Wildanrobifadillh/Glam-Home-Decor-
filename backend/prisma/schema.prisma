@@ -136,6 +136,7 @@ model User {
   receivablePayments    ReceivablePayment[]   @relation("ReceivablePaymentCreatedBy")
   journalEntries        JournalEntry[]        @relation("JournalEntryCreatedBy")
   employee              Employee?
+  payablePayments       PayablePayment[]      @relation("PayablePaymentCreatedBy")
 
   @@map("users")
 }
@@ -282,6 +283,8 @@ model Purchase {
   paidAmount            Int            @default(0) @map("paid_amount")
   remainingAmount       Int            @default(0) @map("remaining_amount")
   paymentStatus         PaymentStatus  @default(PAID) @map("payment_status")
+  paymentMethod         PaymentMethod  @default(CASH) @map("payment_method")
+  cashBankAccountId     String?        @map("cash_bank_account_id") @db.Uuid
   status                PurchaseStatus @default(COMPLETED)
   note                  String?
   createdById           String         @map("created_by_id") @db.Uuid
@@ -290,8 +293,10 @@ model Purchase {
 
   supplier        Supplier         @relation(fields: [supplierId], references: [id])
   createdBy       User             @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  cashBankAccount CashBankAccount? @relation("PurchaseCashBankAccount", fields: [cashBankAccountId], references: [id])
   items           PurchaseItem[]
   purchaseReturns PurchaseReturn[]
+  payablePayments PayablePayment[]
 
   @@map("purchases")
 }
@@ -308,6 +313,23 @@ model PurchaseItem {
   product  Product  @relation(fields: [productId], references: [id])
 
   @@map("purchase_items")
+}
+
+model PayablePayment {
+  id                String        @id @default(uuid()) @db.Uuid
+  purchaseId        String        @map("purchase_id") @db.Uuid
+  amount            Int
+  paymentMethod     PaymentMethod @default(CASH) @map("payment_method")
+  cashBankAccountId String        @map("cash_bank_account_id") @db.Uuid
+  note              String?
+  createdById       String        @map("created_by_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  purchase        Purchase        @relation(fields: [purchaseId], references: [id])
+  cashBankAccount CashBankAccount @relation("PayablePaymentCashBankAccount", fields: [cashBankAccountId], references: [id])
+  createdBy       User            @relation("PayablePaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@map("payable_payments")
 }
 
 model PurchaseReturn {
@@ -488,6 +510,8 @@ model CashBankAccount {
 
   sales              Sale[]              @relation("SaleCashBankAccount")
   receivablePayments ReceivablePayment[] @relation("ReceivablePaymentCashBankAccount")
+  purchases          Purchase[]          @relation("PurchaseCashBankAccount")
+  payablePayments    PayablePayment[]    @relation("PayablePaymentCashBankAccount")
 
   @@map("cash_bank_accounts")
 }
