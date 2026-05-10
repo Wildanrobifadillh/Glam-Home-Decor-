@@ -2,29 +2,53 @@ const prisma = require("../../config/prisma");
 const {
   generatePurchaseReturnNumber,
 } = require("../../utils/generatePurchaseReturnNumber");
+const {
+  createJournalEntryWithLines,
+  getAccountByCode,
+  getCashBankAccountForPayment,
+} = require("../../utils/accountingJournal");
 
-const getAllPurchaseReturns = async () => {
-  return prisma.purchaseReturn.findMany({
+const getPaymentStatusAfterReturn = ({ paidAmount, remainingAmount }) => {
+  if (remainingAmount <= 0) {
+    return "PAID";
+  }
+
+  if (paidAmount > 0) {
+    return "PARTIAL";
+  }
+
+  return "UNPAID";
+};
+
+const getPurchaseReturnInclude = () => ({
+  purchase: {
     include: {
-      purchase: {
+      supplier: true,
+    },
+  },
+  cashBankAccount: true,
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      role: true,
+    },
+  },
+  items: {
+    include: {
+      product: {
         include: {
-          supplier: true,
-        },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          role: true,
-        },
-      },
-      items: {
-        include: {
-          product: true,
+          category: true,
         },
       },
     },
+  },
+});
+
+const getAllPurchaseReturns = async () => {
+  return prisma.purchaseReturn.findMany({
+    include: getPurchaseReturnInclude(),
     orderBy: {
       createdAt: "desc",
     },
@@ -36,30 +60,7 @@ const getPurchaseReturnById = async (id) => {
     where: {
       id,
     },
-    include: {
-      purchase: {
-        include: {
-          supplier: true,
-        },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          role: true,
-        },
-      },
-      items: {
-        include: {
-          product: {
-            include: {
-              category: true,
-            },
-          },
-        },
-      },
-    },
+    include: getPurchaseReturnInclude(),
   });
 
   if (!purchaseReturn) {
@@ -71,7 +72,70 @@ const getPurchaseReturnById = async (id) => {
   return purchaseReturn;
 };
 
-const createPurchaseReturn = async ({ purchaseId, note, items, createdById }) => {
+const createPurchaseReturnJournal = async ({
+  tx,
+  purchaseReturn,
+  payableReductionAmount,
+  refundAmount,
+  paymentMethod,
+  cashBankAccountId,
+  createdById,
+}) => {
+  const inventoryAccount = await getAccountByCode(tx, "1301");
+
+  const lines = [];
+
+  if (payableReductionAmount > 0) {
+    const payableAccount = await getAccountByCode(tx, "2101");
+
+    lines.push({
+      accountId: payableAccount.id,
+      debit: payableReductionAmount,
+      credit: 0,
+      note: `Pengurangan hutang supplier retur pembelian ${purchaseReturn.returnNumber}`,
+    });
+  }
+
+  if (refundAmount > 0) {
+    const cashBankAccount = await getCashBankAccountForPayment(
+      tx,
+      cashBankAccountId,
+      paymentMethod
+    );
+
+    lines.push({
+      accountId: cashBankAccount.accountId,
+      debit: refundAmount,
+      credit: 0,
+      note: `Refund supplier retur pembelian ${purchaseReturn.returnNumber}`,
+    });
+  }
+
+  lines.push({
+    accountId: inventoryAccount.id,
+    debit: 0,
+    credit: purchaseReturn.totalAmount,
+    note: `Pengurangan persediaan retur pembelian ${purchaseReturn.returnNumber}`,
+  });
+
+  await createJournalEntryWithLines({
+    tx,
+    description: `Jurnal retur pembelian ${purchaseReturn.returnNumber}`,
+    sourceType: "PURCHASE_RETURN",
+    sourceId: purchaseReturn.id,
+    lines,
+    createdById,
+  });
+};
+
+const createPurchaseReturn = async ({
+  purchaseId,
+  paymentMethod,
+  cashBankAccountId,
+  note,
+  items,
+  createdById,
+}) => {
   return prisma.$transaction(async (tx) => {
     const purchase = await tx.purchase.findUnique({
       where: {
@@ -152,6 +216,23 @@ const createPurchaseReturn = async ({ purchaseId, note, items, createdById }) =>
       };
     });
 
+    const payableReductionAmount = Math.min(
+      totalAmount,
+      purchase.remainingAmount
+    );
+
+    const refundAmount = totalAmount - payableReductionAmount;
+
+    if (refundAmount > 0 && !cashBankAccountId) {
+      const error = new Error("Cash/bank account is required for supplier refund");
+      error.status = 400;
+      throw error;
+    }
+
+    if (refundAmount > 0) {
+      await getCashBankAccountForPayment(tx, cashBankAccountId, paymentMethod);
+    }
+
     const returnNumber = generatePurchaseReturnNumber();
 
     const purchaseReturn = await tx.purchaseReturn.create({
@@ -159,6 +240,10 @@ const createPurchaseReturn = async ({ purchaseId, note, items, createdById }) =>
         returnNumber,
         purchaseId,
         totalAmount,
+        payableReductionAmount,
+        refundAmount,
+        paymentMethod: refundAmount > 0 ? paymentMethod : null,
+        cashBankAccountId: refundAmount > 0 ? cashBankAccountId : null,
         note,
         createdById,
         items: {
@@ -208,34 +293,39 @@ const createPurchaseReturn = async ({ purchaseId, note, items, createdById }) =>
       });
     }
 
+    const newRemainingAmount =
+      purchase.remainingAmount - payableReductionAmount;
+
+    const newPaymentStatus = getPaymentStatusAfterReturn({
+      paidAmount: purchase.paidAmount,
+      remainingAmount: newRemainingAmount,
+    });
+
+    await tx.purchase.update({
+      where: {
+        id: purchaseId,
+      },
+      data: {
+        remainingAmount: newRemainingAmount,
+        paymentStatus: newPaymentStatus,
+      },
+    });
+
+    await createPurchaseReturnJournal({
+      tx,
+      purchaseReturn,
+      payableReductionAmount,
+      refundAmount,
+      paymentMethod,
+      cashBankAccountId,
+      createdById,
+    });
+
     return tx.purchaseReturn.findUnique({
       where: {
         id: purchaseReturn.id,
       },
-      include: {
-        purchase: {
-          include: {
-            supplier: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            role: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
-      },
+      include: getPurchaseReturnInclude(),
     });
   });
 };
