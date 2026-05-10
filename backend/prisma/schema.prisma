@@ -424,19 +424,24 @@ model SaleItem {
 }
 
 model SaleReturn {
-  id           String       @id @default(uuid()) @db.Uuid
-  returnNumber String       @unique @map("return_number")
-  saleId       String       @map("sale_id") @db.Uuid
-  totalAmount  Int          @map("total_amount")
-  status       ReturnStatus @default(COMPLETED)
-  note         String?
-  createdById  String       @map("created_by_id") @db.Uuid
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id                        String         @id @default(uuid()) @db.Uuid
+  returnNumber              String         @unique @map("return_number")
+  saleId                    String         @map("sale_id") @db.Uuid
+  totalAmount               Int            @map("total_amount")
+  receivableReductionAmount Int            @default(0) @map("receivable_reduction_amount")
+  refundAmount              Int            @default(0) @map("refund_amount")
+  paymentMethod             PaymentMethod? @map("payment_method")
+  cashBankAccountId         String?        @map("cash_bank_account_id") @db.Uuid
+  status                    ReturnStatus   @default(COMPLETED)
+  note                      String?
+  createdById               String         @map("created_by_id") @db.Uuid
+  createdAt                 DateTime       @default(now()) @map("created_at")
+  updatedAt                 DateTime       @updatedAt @map("updated_at")
 
-  sale      Sale             @relation(fields: [saleId], references: [id])
-  createdBy User             @relation("SaleReturnCreatedBy", fields: [createdById], references: [id])
-  items     SaleReturnItem[]
+  sale            Sale             @relation(fields: [saleId], references: [id])
+  cashBankAccount CashBankAccount? @relation("SaleReturnCashBankAccount", fields: [cashBankAccountId], references: [id])
+  createdBy       User             @relation("SaleReturnCreatedBy", fields: [createdById], references: [id])
+  items           SaleReturnItem[]
 
   @@map("sale_returns")
 }
@@ -528,6 +533,7 @@ model CashBankAccount {
   payablePayments    PayablePayment[]    @relation("PayablePaymentCashBankAccount")
   expenses           Expense[]           @relation("ExpenseCashBankAccount")
   payrolls           Payroll[]           @relation("PayrollCashBankAccount")
+  saleReturns        SaleReturn[]        @relation("SaleReturnCashBankAccount")
 
   @@map("cash_bank_accounts")
 }

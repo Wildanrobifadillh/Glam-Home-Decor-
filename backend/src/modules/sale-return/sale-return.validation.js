@@ -26,6 +26,13 @@ const createSaleReturnSchema = z.object({
     })
     .uuid("Invalid sale ID"),
 
+  paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
+
+  cashBankAccountId: z
+    .string()
+    .uuid("Invalid cash/bank account ID")
+    .optional(),
+
   note: z.string().trim().optional(),
 
   items: z

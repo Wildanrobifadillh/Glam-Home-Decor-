@@ -2,25 +2,53 @@ const prisma = require("../../config/prisma");
 const {
   generateSaleReturnNumber,
 } = require("../../utils/generateSaleReturnNumber");
+const {
+  createJournalEntryWithLines,
+  getAccountByCode,
+  getCashBankAccountForPayment,
+} = require("../../utils/accountingJournal");
 
-const getAllSaleReturns = async () => {
-  return prisma.saleReturn.findMany({
+const getPaymentStatusAfterReturn = ({ paidAmount, remainingAmount }) => {
+  if (remainingAmount <= 0) {
+    return "PAID";
+  }
+
+  if (paidAmount > 0) {
+    return "PARTIAL";
+  }
+
+  return "UNPAID";
+};
+
+const getSaleReturnInclude = () => ({
+  sale: {
     include: {
-      sale: true,
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          role: true,
-        },
-      },
-      items: {
+      customer: true,
+    },
+  },
+  cashBankAccount: true,
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      role: true,
+    },
+  },
+  items: {
+    include: {
+      product: {
         include: {
-          product: true,
+          category: true,
         },
       },
     },
+  },
+});
+
+const getAllSaleReturns = async () => {
+  return prisma.saleReturn.findMany({
+    include: getSaleReturnInclude(),
     orderBy: {
       createdAt: "desc",
     },
@@ -32,30 +60,7 @@ const getSaleReturnById = async (id) => {
     where: {
       id,
     },
-    include: {
-      sale: {
-        include: {
-          customer: true,
-        },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          role: true,
-        },
-      },
-      items: {
-        include: {
-          product: {
-            include: {
-              category: true,
-            },
-          },
-        },
-      },
-    },
+    include: getSaleReturnInclude(),
   });
 
   if (!saleReturn) {
@@ -67,7 +72,95 @@ const getSaleReturnById = async (id) => {
   return saleReturn;
 };
 
-const createSaleReturn = async ({ saleId, note, items, createdById }) => {
+const createSaleReturnJournal = async ({
+  tx,
+  sale,
+  saleReturn,
+  saleReturnItemsData,
+  receivableReductionAmount,
+  refundAmount,
+  paymentMethod,
+  cashBankAccountId,
+  createdById,
+}) => {
+  const salesReturnAccount = await getAccountByCode(tx, "4102");
+
+  const lines = [
+    {
+      accountId: salesReturnAccount.id,
+      debit: saleReturn.totalAmount,
+      credit: 0,
+      note: `Retur penjualan ${saleReturn.returnNumber}`,
+    },
+  ];
+
+  if (receivableReductionAmount > 0) {
+    const receivableAccount = await getAccountByCode(tx, "1201");
+
+    lines.push({
+      accountId: receivableAccount.id,
+      debit: 0,
+      credit: receivableReductionAmount,
+      note: `Pengurangan piutang retur penjualan ${saleReturn.returnNumber}`,
+    });
+  }
+
+  if (refundAmount > 0) {
+    const cashBankAccount = await getCashBankAccountForPayment(
+      tx,
+      cashBankAccountId,
+      paymentMethod
+    );
+
+    lines.push({
+      accountId: cashBankAccount.accountId,
+      debit: 0,
+      credit: refundAmount,
+      note: `Refund retur penjualan ${saleReturn.returnNumber}`,
+    });
+  }
+
+  const saleableReturnCost = saleReturnItemsData
+    .filter((item) => item.condition === "SALEABLE")
+    .reduce((total, item) => total + item.costPrice * item.quantity, 0);
+
+  if (saleableReturnCost > 0) {
+    const inventoryAccount = await getAccountByCode(tx, "1301");
+    const cogsAccount = await getAccountByCode(tx, "5101");
+
+    lines.push({
+      accountId: inventoryAccount.id,
+      debit: saleableReturnCost,
+      credit: 0,
+      note: `Persediaan kembali dari retur ${saleReturn.returnNumber}`,
+    });
+
+    lines.push({
+      accountId: cogsAccount.id,
+      debit: 0,
+      credit: saleableReturnCost,
+      note: `Pengurangan HPP dari retur ${saleReturn.returnNumber}`,
+    });
+  }
+
+  await createJournalEntryWithLines({
+    tx,
+    description: `Jurnal retur penjualan ${saleReturn.returnNumber}`,
+    sourceType: "SALE_RETURN",
+    sourceId: saleReturn.id,
+    lines,
+    createdById,
+  });
+};
+
+const createSaleReturn = async ({
+  saleId,
+  paymentMethod,
+  cashBankAccountId,
+  note,
+  items,
+  createdById,
+}) => {
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findUnique({
       where: {
@@ -143,11 +236,29 @@ const createSaleReturn = async ({ saleId, note, items, createdById }) => {
         productId: item.productId,
         quantity: item.quantity,
         sellingPrice: saleItem.sellingPrice,
+        costPrice: saleItem.costPrice,
         subtotal,
         condition: item.condition,
         note: item.note,
       };
     });
+
+    const receivableReductionAmount = Math.min(
+      totalAmount,
+      sale.remainingAmount
+    );
+
+    const refundAmount = totalAmount - receivableReductionAmount;
+
+    if (refundAmount > 0 && !cashBankAccountId) {
+      const error = new Error("Cash/bank account is required for refund");
+      error.status = 400;
+      throw error;
+    }
+
+    if (refundAmount > 0) {
+      await getCashBankAccountForPayment(tx, cashBankAccountId, paymentMethod);
+    }
 
     const returnNumber = generateSaleReturnNumber();
 
@@ -156,10 +267,21 @@ const createSaleReturn = async ({ saleId, note, items, createdById }) => {
         returnNumber,
         saleId,
         totalAmount,
+        receivableReductionAmount,
+        refundAmount,
+        paymentMethod: refundAmount > 0 ? paymentMethod : null,
+        cashBankAccountId: refundAmount > 0 ? cashBankAccountId : null,
         note,
         createdById,
         items: {
-          create: saleReturnItemsData,
+          create: saleReturnItemsData.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            sellingPrice: item.sellingPrice,
+            subtotal: item.subtotal,
+            condition: item.condition,
+            note: item.note,
+          })),
         },
       },
     });
@@ -217,34 +339,41 @@ const createSaleReturn = async ({ saleId, note, items, createdById }) => {
       }
     }
 
+    const newRemainingAmount =
+      sale.remainingAmount - receivableReductionAmount;
+
+    const newPaymentStatus = getPaymentStatusAfterReturn({
+      paidAmount: sale.paidAmount,
+      remainingAmount: newRemainingAmount,
+    });
+
+    await tx.sale.update({
+      where: {
+        id: saleId,
+      },
+      data: {
+        remainingAmount: newRemainingAmount,
+        paymentStatus: newPaymentStatus,
+      },
+    });
+
+    await createSaleReturnJournal({
+      tx,
+      sale,
+      saleReturn,
+      saleReturnItemsData,
+      receivableReductionAmount,
+      refundAmount,
+      paymentMethod,
+      cashBankAccountId,
+      createdById,
+    });
+
     return tx.saleReturn.findUnique({
       where: {
         id: saleReturn.id,
       },
-      include: {
-        sale: {
-          include: {
-            customer: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            role: true,
-          },
-        },
-        items: {
-          include: {
-            product: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
-      },
+      include: getSaleReturnInclude(),
     });
   });
 };
