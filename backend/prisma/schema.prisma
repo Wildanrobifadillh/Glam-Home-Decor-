@@ -116,6 +116,11 @@ enum JournalSourceType {
   STOCK_OPNAME
 }
 
+enum ExpenseStatus {
+  POSTED
+  CANCELLED
+}
+
 model User {
   id           String     @id @default(uuid()) @db.Uuid
   name         String
@@ -137,6 +142,7 @@ model User {
   journalEntries        JournalEntry[]        @relation("JournalEntryCreatedBy")
   employee              Employee?
   payablePayments       PayablePayment[]      @relation("PayablePaymentCreatedBy")
+  expenses              Expense[]             @relation("ExpenseCreatedBy")
 
   @@map("users")
 }
@@ -490,6 +496,7 @@ model Account {
   children         Account[]         @relation("AccountHierarchy")
   cashBankAccounts CashBankAccount[]
   journalLines     JournalLine[]
+  expenses         Expense[]
 
   @@map("accounts")
 }
@@ -512,6 +519,7 @@ model CashBankAccount {
   receivablePayments ReceivablePayment[] @relation("ReceivablePaymentCashBankAccount")
   purchases          Purchase[]          @relation("PurchaseCashBankAccount")
   payablePayments    PayablePayment[]    @relation("PayablePaymentCashBankAccount")
+  expenses           Expense[]           @relation("ExpenseCashBankAccount")
 
   @@map("cash_bank_accounts")
 }
@@ -546,4 +554,26 @@ model JournalLine {
   account      Account      @relation(fields: [accountId], references: [id])
 
   @@map("journal_lines")
+}
+
+model Expense {
+  id                String        @id @default(uuid()) @db.Uuid
+  expenseNumber     String        @unique @map("expense_number")
+  expenseDate       DateTime      @default(now()) @map("expense_date")
+  accountId         String        @map("account_id") @db.Uuid
+  cashBankAccountId String        @map("cash_bank_account_id") @db.Uuid
+  amount            Int
+  paymentMethod     PaymentMethod @default(CASH) @map("payment_method")
+  description       String
+  note              String?
+  status            ExpenseStatus @default(POSTED)
+  createdById       String        @map("created_by_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  account         Account         @relation(fields: [accountId], references: [id])
+  cashBankAccount CashBankAccount @relation("ExpenseCashBankAccount", fields: [cashBankAccountId], references: [id])
+  createdBy       User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+
+  @@map("expenses")
 }
