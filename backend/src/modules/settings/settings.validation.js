@@ -20,6 +20,56 @@ const updateStoreProfileSchema = z.object({
   businessNumber: z.string().trim().optional(),
 });
 
+const createStoreBankAccountSchema = z.object({
+  accountId: z
+    .string({
+      required_error: "Account is required",
+    })
+    .uuid("Invalid account ID"),
+
+  name: z
+    .string({
+      required_error: "Bank account name is required",
+    })
+    .trim()
+    .min(1, "Bank account name is required"),
+
+  bankName: z
+    .string({
+      required_error: "Bank name is required",
+    })
+    .trim()
+    .min(1, "Bank name is required"),
+
+  accountNumber: z
+    .string({
+      required_error: "Account number is required",
+    })
+    .trim()
+    .min(1, "Account number is required"),
+
+  accountHolderName: z
+    .string({
+      required_error: "Account holder name is required",
+    })
+    .trim()
+    .min(1, "Account holder name is required"),
+
+  isDefaultForInvoice: z.coerce.boolean().optional().default(false),
+});
+
+const updateStoreBankAccountSchema = createStoreBankAccountSchema;
+
+const updateStoreBankAccountStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE"], {
+    required_error: "Status is required",
+    invalid_type_error: "Invalid status",
+  }),
+});
+
 module.exports = {
   updateStoreProfileSchema,
+  createStoreBankAccountSchema,
+  updateStoreBankAccountSchema,
+  updateStoreBankAccountStatusSchema,
 };

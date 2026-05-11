@@ -520,16 +520,18 @@ model Account {
 }
 
 model CashBankAccount {
-  id             String       @id @default(uuid()) @db.Uuid
-  accountId      String       @map("account_id") @db.Uuid
-  name           String
-  type           CashBankType
-  bankName       String?      @map("bank_name")
-  accountNumber  String?      @map("account_number")
-  currentBalance Int          @default(0) @map("current_balance")
-  status         MasterStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id                  String       @id @default(uuid()) @db.Uuid
+  accountId           String       @map("account_id") @db.Uuid
+  name                String
+  type                CashBankType
+  bankName            String?      @map("bank_name")
+  accountHolderName   String?      @map("account_holder_name")
+  accountNumber       String?      @map("account_number")
+  currentBalance      Int          @default(0) @map("current_balance")
+  status              MasterStatus @default(ACTIVE)
+  isDefaultForInvoice Boolean      @default(false) @map("is_default_for_invoice")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
 
   account Account @relation(fields: [accountId], references: [id])
 
