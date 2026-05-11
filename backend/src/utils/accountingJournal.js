@@ -88,6 +88,7 @@ const createJournalEntryWithLines = async ({
   description,
   sourceType,
   sourceId,
+  reversalOfId,
   lines,
   createdById,
 }) => {
@@ -121,13 +122,14 @@ const createJournalEntryWithLines = async ({
   const entryNumber = generateJournalEntryNumber();
 
   return tx.journalEntry.create({
-    data: {
-      entryNumber,
-      entryDate,
-      description,
-      sourceType,
-      sourceId,
-      createdById,
+  data: {
+    entryNumber,
+    entryDate,
+    description,
+    sourceType,
+    sourceId,
+    reversalOfId,
+    createdById,
       lines: {
         create: normalizedLines,
       },

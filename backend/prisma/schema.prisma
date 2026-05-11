@@ -114,6 +114,7 @@ enum JournalSourceType {
   SALE_RETURN
   PURCHASE_RETURN
   STOCK_OPNAME
+  REVERSAL
 }
 
 enum ExpenseStatus {
@@ -545,19 +546,22 @@ model CashBankAccount {
 }
 
 model JournalEntry {
-  id          String             @id @default(uuid()) @db.Uuid
-  entryNumber String             @unique @map("entry_number")
-  entryDate   DateTime           @default(now()) @map("entry_date")
-  description String?
-  sourceType  JournalSourceType  @default(MANUAL) @map("source_type")
-  sourceId    String?            @map("source_id") @db.Uuid
-  status      JournalEntryStatus @default(POSTED)
-  createdById String             @map("created_by_id") @db.Uuid
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
+  id           String             @id @default(uuid()) @db.Uuid
+  entryNumber  String             @unique @map("entry_number")
+  entryDate    DateTime           @default(now()) @map("entry_date")
+  description  String?
+  sourceType   JournalSourceType  @default(MANUAL) @map("source_type")
+  sourceId     String?            @map("source_id") @db.Uuid
+  reversalOfId String?            @unique @map("reversal_of_id") @db.Uuid
+  status       JournalEntryStatus @default(POSTED)
+  createdById  String             @map("created_by_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
 
-  createdBy User          @relation("JournalEntryCreatedBy", fields: [createdById], references: [id])
-  lines     JournalLine[]
+  createdBy  User          @relation("JournalEntryCreatedBy", fields: [createdById], references: [id])
+  reversalOf JournalEntry? @relation("JournalReversal", fields: [reversalOfId], references: [id])
+  reversedBy JournalEntry? @relation("JournalReversal")
+  lines      JournalLine[]
 
   @@map("journal_entries")
 }

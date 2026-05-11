@@ -7,7 +7,6 @@ const { authorizeRoles } = require("../../middlewares/role.middleware");
 const router = express.Router();
 
 router.get("/", authenticate, journalEntryController.getAllJournalEntries);
-router.get("/:id", authenticate, journalEntryController.getJournalEntryById);
 
 router.post(
   "/",
@@ -15,5 +14,14 @@ router.post(
   authorizeRoles("OWNER"),
   journalEntryController.createJournalEntry
 );
+
+router.post(
+  "/:id/reverse",
+  authenticate,
+  authorizeRoles("OWNER"),
+  journalEntryController.reverseJournalEntry
+);
+
+router.get("/:id", authenticate, journalEntryController.getJournalEntryById);
 
 module.exports = router;

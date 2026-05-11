@@ -79,6 +79,11 @@ const createJournalEntrySchema = z
     }
   );
 
+  const reverseJournalEntrySchema = z.object({
+  note: z.string().trim().optional(),
+});
+
 module.exports = {
   createJournalEntrySchema,
+  reverseJournalEntrySchema,
 };

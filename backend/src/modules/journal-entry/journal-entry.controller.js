@@ -1,6 +1,7 @@
 const journalEntryService = require("./journal-entry.service");
 const {
   createJournalEntrySchema,
+  reverseJournalEntrySchema,
 } = require("./journal-entry.validation");
 
 const getAllJournalEntries = async (req, res, next) => {
@@ -58,8 +59,31 @@ const createJournalEntry = async (req, res, next) => {
   }
 };
 
+const reverseJournalEntry = async (req, res, next) => {
+  try {
+    const validatedData = reverseJournalEntrySchema.parse(req.body);
+
+    const journalEntry = await journalEntryService.reverseJournalEntry({
+      journalEntryId: req.params.id,
+      note: validatedData.note,
+      createdById: req.user.id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Journal entry reversed successfully",
+      data: {
+        journalEntry,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllJournalEntries,
   getJournalEntryById,
   createJournalEntry,
+  reverseJournalEntry,
 };
