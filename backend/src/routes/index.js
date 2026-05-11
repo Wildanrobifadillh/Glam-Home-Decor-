@@ -19,7 +19,7 @@ const receivableRoutes = require("../modules/receivable/receivable.routes");
 const payableRoutes = require("../modules/payable/payable.routes");
 const expenseRoutes = require("../modules/expense/expense.routes");
 const payrollRoutes = require("../modules/payroll/payroll.routes");
-
+const reportRoutes = require("../modules/report/report.routes");
 
 const router = express.Router();
 
@@ -49,5 +49,6 @@ router.use("/cash-bank-accounts", cashBankAccountRoutes);
 router.use("/journal-entries", journalEntryRoutes);
 router.use("/expenses", expenseRoutes);
 router.use("/payrolls", payrollRoutes);
+router.use("/reports", reportRoutes);
 
 module.exports = router;
