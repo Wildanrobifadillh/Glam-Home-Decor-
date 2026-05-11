@@ -20,6 +20,7 @@ const payableRoutes = require("../modules/payable/payable.routes");
 const expenseRoutes = require("../modules/expense/expense.routes");
 const payrollRoutes = require("../modules/payroll/payroll.routes");
 const reportRoutes = require("../modules/report/report.routes");
+const settingsRoutes = require("../modules/settings/settings.routes");
 
 const router = express.Router();
 
@@ -50,5 +51,6 @@ router.use("/journal-entries", journalEntryRoutes);
 router.use("/expenses", expenseRoutes);
 router.use("/payrolls", payrollRoutes);
 router.use("/reports", reportRoutes);
+router.use("/settings", settingsRoutes);
 
 module.exports = router;
