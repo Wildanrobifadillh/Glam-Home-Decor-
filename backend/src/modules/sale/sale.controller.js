@@ -147,6 +147,22 @@ const getSaleInvoicePreview = async (req, res, next) => {
   }
 };
 
+const generateSaleInvoice = async (req, res, next) => {
+  try {
+    const invoice = await saleService.generateSaleInvoice(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale invoice generated successfully",
+      data: {
+        invoice,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -155,4 +171,5 @@ module.exports = {
   rejectSale,
   paySale,
   getSaleInvoicePreview,
+  generateSaleInvoice,
 };

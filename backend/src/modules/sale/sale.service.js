@@ -861,6 +861,38 @@ const paySale = async ({
   });
 };
 
+const padNumber = (number, length = 4) => {
+  return String(number).padStart(length, "0");
+};
+
+const getYearMonth = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}${month}`;
+};
+
+const generateSalesInvoiceNumber = async ({ tx, documentSetting, date }) => {
+  const prefix = documentSetting.salesInvoicePrefix;
+  const yearMonth = getYearMonth(date);
+
+  const invoicePrefix = documentSetting.resetNumberMonthly
+    ? `${prefix}-${yearMonth}`
+    : `${prefix}`;
+
+  const existingInvoiceCount = await tx.sale.count({
+    where: {
+      invoiceNumber: {
+        startsWith: invoicePrefix,
+      },
+    },
+  });
+
+  const nextNumber = existingInvoiceCount + 1;
+
+  return `${invoicePrefix}-${padNumber(nextNumber)}`;
+};
+
 const getSaleInvoicePreview = async (saleId) => {
   const sale = await prisma.sale.findUnique({
     where: {
@@ -1073,6 +1105,124 @@ const getSaleInvoicePreview = async (saleId) => {
   };
 };
 
+const generateSaleInvoice = async (saleId) => {
+  const sale = await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("Sale not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (sale.status !== "COMPLETED") {
+      const error = new Error("Only completed sale can generate invoice");
+      error.status = 400;
+      throw error;
+    }
+
+    if (sale.invoiceNumber) {
+      const error = new Error("Invoice number already generated");
+      error.status = 400;
+      throw error;
+    }
+
+    const documentSetting = await tx.documentSetting.upsert({
+      where: {
+        key: "MAIN",
+      },
+      update: {},
+      create: {
+        key: "MAIN",
+        documentLanguage: "ID",
+        salesInvoicePrefix: "INV-SALE-GHD",
+        salesReturnPrefix: "RET-SALE-GHD",
+        purchaseReturnPrefix: "RET-PUR-GHD",
+        payrollSlipPrefix: "PAYSLIP-GHD",
+        reportPrefix: "RPT-GHD",
+        deliveryOrderPrefix: "SJ-GHD",
+        resetNumberMonthly: true,
+        defaultPaperSize: "F4",
+        alternatePaperSize: "A4",
+        invoiceCopies: 3,
+        maxItemsF4: 12,
+        maxItemsA4: 8,
+        copyLabel1: "LEMBAR 1 - PELANGGAN",
+        copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
+        copyLabel3: "LEMBAR 3 - ARSIP TOKO",
+        thankYouNote:
+          "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+        transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
+        complaintTerms:
+          "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
+        returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
+        paymentTerms:
+          "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+        additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
+        responsiblePersonName: "Zaid Ishmatul Fawaid",
+        responsiblePersonTitle: "Penanggung Jawab / Owner",
+        showSignature: true,
+        signatureUrl: null,
+        showStamp: true,
+        stampUrl: null,
+        signatureText: "Hormat kami,\nGlam Home Decor",
+      },
+    });
+
+    const invoiceDate = new Date();
+
+    const invoiceNumber = await generateSalesInvoiceNumber({
+      tx,
+      documentSetting,
+      date: invoiceDate,
+    });
+
+    return tx.sale.update({
+      where: {
+        id: saleId,
+      },
+      data: {
+        invoiceNumber,
+        invoiceDate,
+      },
+      include: {
+        customer: true,
+        cashBankAccount: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            role: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+        additionalCosts: true,
+        receivablePayments: true,
+      },
+    });
+  });
+
+  const invoicePreview = await getSaleInvoicePreview(sale.id);
+
+  return {
+    sale,
+    invoicePreview,
+  };
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -1081,4 +1231,5 @@ module.exports = {
   rejectSale,
   paySale,
   getSaleInvoicePreview,
+  generateSaleInvoice,
 };

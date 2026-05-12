@@ -17,6 +17,13 @@ router.get(
 router.get("/:id", authenticate, saleController.getSaleById);
 
 router.post(
+  "/:id/generate-invoice",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  saleController.generateSaleInvoice
+);
+
+router.post(
   "/",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),
