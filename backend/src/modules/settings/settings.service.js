@@ -3,6 +3,8 @@ const prisma = require("../../config/prisma");
 
 const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 const STORE_PROFILE_KEY = "MAIN";
+const DOCUMENT_SETTING_KEY = "MAIN";
+
 
 const getDefaultStoreProfileData = () => ({
   key: STORE_PROFILE_KEY,
@@ -1135,6 +1137,138 @@ const updateOperationalPreferences = async (data) => {
   });
 };
 
+const getDefaultDocumentSettingData = () => ({
+  key: DOCUMENT_SETTING_KEY,
+  documentLanguage: "ID",
+
+  salesInvoicePrefix: "INV-SALE-GHD",
+  salesReturnPrefix: "RET-SALE-GHD",
+  purchaseReturnPrefix: "RET-PUR-GHD",
+  payrollSlipPrefix: "PAYSLIP-GHD",
+  reportPrefix: "RPT-GHD",
+  deliveryOrderPrefix: "SJ-GHD",
+  resetNumberMonthly: true,
+
+  defaultPaperSize: "F4",
+  alternatePaperSize: "A4",
+  invoiceCopies: 3,
+  maxItemsF4: 12,
+  maxItemsA4: 8,
+
+  copyLabel1: "LEMBAR 1 - PELANGGAN",
+  copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
+  copyLabel3: "LEMBAR 3 - ARSIP TOKO",
+
+  thankYouNote:
+    "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+  transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
+  complaintTerms:
+    "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
+  returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
+  paymentTerms:
+    "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+  additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
+
+  responsiblePersonName: "Zaid Ishmatul Fawaid",
+  responsiblePersonTitle: "Penanggung Jawab / Owner",
+  showSignature: true,
+  signatureUrl: null,
+  showStamp: true,
+  stampUrl: null,
+  signatureText: "Hormat kami,\nGlam Home Decor",
+});
+
+const getDocumentSetting = async () => {
+  return prisma.documentSetting.upsert({
+    where: {
+      key: DOCUMENT_SETTING_KEY,
+    },
+    update: {},
+    create: getDefaultDocumentSettingData(),
+  });
+};
+
+const updateDocumentSetting = async (data) => {
+  return prisma.documentSetting.upsert({
+    where: {
+      key: DOCUMENT_SETTING_KEY,
+    },
+    update: {
+      documentLanguage: data.documentLanguage,
+
+      salesInvoicePrefix: data.salesInvoicePrefix,
+      salesReturnPrefix: data.salesReturnPrefix,
+      purchaseReturnPrefix: data.purchaseReturnPrefix,
+      payrollSlipPrefix: data.payrollSlipPrefix,
+      reportPrefix: data.reportPrefix,
+      deliveryOrderPrefix: normalizeEmptyString(data.deliveryOrderPrefix),
+      resetNumberMonthly: data.resetNumberMonthly,
+
+      defaultPaperSize: data.defaultPaperSize,
+      alternatePaperSize: data.alternatePaperSize,
+      invoiceCopies: data.invoiceCopies,
+      maxItemsF4: data.maxItemsF4,
+      maxItemsA4: data.maxItemsA4,
+
+      copyLabel1: data.copyLabel1,
+      copyLabel2: data.copyLabel2,
+      copyLabel3: data.copyLabel3,
+
+      thankYouNote: normalizeEmptyString(data.thankYouNote),
+      transactionProofNote: normalizeEmptyString(data.transactionProofNote),
+      complaintTerms: normalizeEmptyString(data.complaintTerms),
+      returnTerms: normalizeEmptyString(data.returnTerms),
+      paymentTerms: normalizeEmptyString(data.paymentTerms),
+      additionalNote: normalizeEmptyString(data.additionalNote),
+
+      responsiblePersonName: data.responsiblePersonName,
+      responsiblePersonTitle: data.responsiblePersonTitle,
+      showSignature: data.showSignature,
+      signatureUrl: normalizeEmptyString(data.signatureUrl),
+      showStamp: data.showStamp,
+      stampUrl: normalizeEmptyString(data.stampUrl),
+      signatureText: data.signatureText,
+    },
+    create: {
+      key: DOCUMENT_SETTING_KEY,
+      documentLanguage: data.documentLanguage,
+
+      salesInvoicePrefix: data.salesInvoicePrefix,
+      salesReturnPrefix: data.salesReturnPrefix,
+      purchaseReturnPrefix: data.purchaseReturnPrefix,
+      payrollSlipPrefix: data.payrollSlipPrefix,
+      reportPrefix: data.reportPrefix,
+      deliveryOrderPrefix: normalizeEmptyString(data.deliveryOrderPrefix),
+      resetNumberMonthly: data.resetNumberMonthly,
+
+      defaultPaperSize: data.defaultPaperSize,
+      alternatePaperSize: data.alternatePaperSize,
+      invoiceCopies: data.invoiceCopies,
+      maxItemsF4: data.maxItemsF4,
+      maxItemsA4: data.maxItemsA4,
+
+      copyLabel1: data.copyLabel1,
+      copyLabel2: data.copyLabel2,
+      copyLabel3: data.copyLabel3,
+
+      thankYouNote: normalizeEmptyString(data.thankYouNote),
+      transactionProofNote: normalizeEmptyString(data.transactionProofNote),
+      complaintTerms: normalizeEmptyString(data.complaintTerms),
+      returnTerms: normalizeEmptyString(data.returnTerms),
+      paymentTerms: normalizeEmptyString(data.paymentTerms),
+      additionalNote: normalizeEmptyString(data.additionalNote),
+
+      responsiblePersonName: data.responsiblePersonName,
+      responsiblePersonTitle: data.responsiblePersonTitle,
+      showSignature: data.showSignature,
+      signatureUrl: normalizeEmptyString(data.signatureUrl),
+      showStamp: data.showStamp,
+      stampUrl: normalizeEmptyString(data.stampUrl),
+      signatureText: data.signatureText,
+    },
+  });
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -1165,4 +1299,6 @@ module.exports = {
   changePassword,
   getOperationalPreferences,
   updateOperationalPreferences,
+  getDocumentSetting,
+  updateDocumentSetting,
 };

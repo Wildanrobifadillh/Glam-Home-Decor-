@@ -15,6 +15,7 @@ const {
   updateRolePermissionsSchema,
   changePasswordSchema,
   updateOperationalPreferencesSchema,
+  updateDocumentSettingSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -560,6 +561,42 @@ const updateOperationalPreferences = async (req, res, next) => {
   }
 };
 
+const getDocumentSetting = async (req, res, next) => {
+  try {
+    const documentSetting = await settingsService.getDocumentSetting();
+
+    return res.status(200).json({
+      success: true,
+      message: "Document setting retrieved successfully",
+      data: {
+        documentSetting,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateDocumentSetting = async (req, res, next) => {
+  try {
+    const validatedData = updateDocumentSettingSchema.parse(req.body);
+
+    const documentSetting = await settingsService.updateDocumentSetting(
+      validatedData
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Document setting updated successfully",
+      data: {
+        documentSetting,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -590,4 +627,6 @@ module.exports = {
   changePassword,
   getOperationalPreferences,
   updateOperationalPreferences,
+  getDocumentSetting,
+  updateDocumentSetting,
 };

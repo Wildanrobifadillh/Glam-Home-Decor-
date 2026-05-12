@@ -678,3 +678,47 @@ model OperationalPreference {
 
   @@map("operational_preferences")
 }
+
+model DocumentSetting {
+  id               String @id @default(uuid()) @db.Uuid
+  key              String @unique @default("MAIN")
+  documentLanguage String @default("ID") @map("document_language")
+
+  salesInvoicePrefix   String  @map("sales_invoice_prefix")
+  salesReturnPrefix    String  @map("sales_return_prefix")
+  purchaseReturnPrefix String  @map("purchase_return_prefix")
+  payrollSlipPrefix    String  @map("payroll_slip_prefix")
+  reportPrefix         String  @map("report_prefix")
+  deliveryOrderPrefix  String? @map("delivery_order_prefix")
+  resetNumberMonthly   Boolean @default(true) @map("reset_number_monthly")
+
+  defaultPaperSize   String @default("F4") @map("default_paper_size")
+  alternatePaperSize String @default("A4") @map("alternate_paper_size")
+  invoiceCopies      Int    @default(3) @map("invoice_copies")
+  maxItemsF4         Int    @default(12) @map("max_items_f4")
+  maxItemsA4         Int    @default(8) @map("max_items_a4")
+
+  copyLabel1 String @map("copy_label_1")
+  copyLabel2 String @map("copy_label_2")
+  copyLabel3 String @map("copy_label_3")
+
+  thankYouNote         String? @map("thank_you_note")
+  transactionProofNote String? @map("transaction_proof_note")
+  complaintTerms       String? @map("complaint_terms")
+  returnTerms          String? @map("return_terms")
+  paymentTerms         String? @map("payment_terms")
+  additionalNote       String? @map("additional_note")
+
+  responsiblePersonName  String  @map("responsible_person_name")
+  responsiblePersonTitle String  @map("responsible_person_title")
+  showSignature          Boolean @default(true) @map("show_signature")
+  signatureUrl           String? @map("signature_url")
+  showStamp              Boolean @default(true) @map("show_stamp")
+  stampUrl               String? @map("stamp_url")
+  signatureText          String  @map("signature_text")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("document_settings")
+}

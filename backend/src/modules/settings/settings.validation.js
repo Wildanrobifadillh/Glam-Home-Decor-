@@ -228,6 +228,146 @@ const updateOperationalPreferencesSchema = z.object({
   }),
 });
 
+const updateDocumentSettingSchema = z.object({
+  documentLanguage: z.enum(["ID", "EN"], {
+    required_error: "Document language is required",
+    invalid_type_error: "Invalid document language",
+  }),
+
+  salesInvoicePrefix: z
+    .string({
+      required_error: "Sales invoice prefix is required",
+    })
+    .trim()
+    .min(1, "Sales invoice prefix is required"),
+
+  salesReturnPrefix: z
+    .string({
+      required_error: "Sales return prefix is required",
+    })
+    .trim()
+    .min(1, "Sales return prefix is required"),
+
+  purchaseReturnPrefix: z
+    .string({
+      required_error: "Purchase return prefix is required",
+    })
+    .trim()
+    .min(1, "Purchase return prefix is required"),
+
+  payrollSlipPrefix: z
+    .string({
+      required_error: "Payroll slip prefix is required",
+    })
+    .trim()
+    .min(1, "Payroll slip prefix is required"),
+
+  reportPrefix: z
+    .string({
+      required_error: "Report prefix is required",
+    })
+    .trim()
+    .min(1, "Report prefix is required"),
+
+  deliveryOrderPrefix: z.string().trim().optional(),
+
+  resetNumberMonthly: z.coerce.boolean({
+    required_error: "Reset number monthly is required",
+  }),
+
+  defaultPaperSize: z.enum(["F4", "A4"], {
+    required_error: "Default paper size is required",
+    invalid_type_error: "Invalid default paper size",
+  }),
+
+  alternatePaperSize: z.enum(["F4", "A4"], {
+    required_error: "Alternate paper size is required",
+    invalid_type_error: "Invalid alternate paper size",
+  }),
+
+  invoiceCopies: z.coerce
+    .number({
+      required_error: "Invoice copies is required",
+    })
+    .int("Invoice copies must be an integer")
+    .positive("Invoice copies must be greater than 0"),
+
+  maxItemsF4: z.coerce
+    .number({
+      required_error: "Max items F4 is required",
+    })
+    .int("Max items F4 must be an integer")
+    .positive("Max items F4 must be greater than 0"),
+
+  maxItemsA4: z.coerce
+    .number({
+      required_error: "Max items A4 is required",
+    })
+    .int("Max items A4 must be an integer")
+    .positive("Max items A4 must be greater than 0"),
+
+  copyLabel1: z
+    .string({
+      required_error: "Copy label 1 is required",
+    })
+    .trim()
+    .min(1, "Copy label 1 is required"),
+
+  copyLabel2: z
+    .string({
+      required_error: "Copy label 2 is required",
+    })
+    .trim()
+    .min(1, "Copy label 2 is required"),
+
+  copyLabel3: z
+    .string({
+      required_error: "Copy label 3 is required",
+    })
+    .trim()
+    .min(1, "Copy label 3 is required"),
+
+  thankYouNote: z.string().trim().optional(),
+  transactionProofNote: z.string().trim().optional(),
+  complaintTerms: z.string().trim().optional(),
+  returnTerms: z.string().trim().optional(),
+  paymentTerms: z.string().trim().optional(),
+  additionalNote: z.string().trim().optional(),
+
+  responsiblePersonName: z
+    .string({
+      required_error: "Responsible person name is required",
+    })
+    .trim()
+    .min(1, "Responsible person name is required"),
+
+  responsiblePersonTitle: z
+    .string({
+      required_error: "Responsible person title is required",
+    })
+    .trim()
+    .min(1, "Responsible person title is required"),
+
+  showSignature: z.coerce.boolean({
+    required_error: "Show signature is required",
+  }),
+
+  signatureUrl: z.string().trim().optional(),
+
+  showStamp: z.coerce.boolean({
+    required_error: "Show stamp is required",
+  }),
+
+  stampUrl: z.string().trim().optional(),
+
+  signatureText: z
+    .string({
+      required_error: "Signature text is required",
+    })
+    .trim()
+    .min(1, "Signature text is required"),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
@@ -244,4 +384,5 @@ module.exports = {
   updateRolePermissionsSchema,
   changePasswordSchema,
   updateOperationalPreferencesSchema,
+  updateDocumentSettingSchema,
 };

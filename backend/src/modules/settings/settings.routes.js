@@ -21,6 +21,20 @@ router.put(
 );
 
 router.get(
+  "/document",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  settingsController.getDocumentSetting
+);
+
+router.put(
+  "/document",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateDocumentSetting
+);
+
+router.get(
   "/store-bank-accounts",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),
