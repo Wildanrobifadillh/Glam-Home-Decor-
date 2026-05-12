@@ -1,3 +1,4 @@
+const bcrypt = require("bcrypt");
 const prisma = require("../../config/prisma");
 
 const STORE_PROFILE_KEY = "MAIN";
@@ -333,6 +334,215 @@ const updateStoreBankAccountStatus = async (id, status) => {
   });
 };
 
+const userSelect = {
+  id: true,
+  name: true,
+  username: true,
+  role: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  employee: true,
+};
+
+const getSettingsUsers = async () => {
+  return prisma.user.findMany({
+    select: userSelect,
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+};
+
+const getSettingsUserById = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+    select: userSelect,
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return user;
+};
+
+const ensureUsernameIsAvailable = async (username, ignoredUserId = null) => {
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      username,
+    },
+  });
+
+  if (existingUser && existingUser.id !== ignoredUserId) {
+    const error = new Error("Username already exists");
+    error.status = 400;
+    throw error;
+  }
+};
+
+const ensureAnotherActiveOwnerExists = async (userId) => {
+  const activeOwnerCount = await prisma.user.count({
+    where: {
+      role: "OWNER",
+      status: "ACTIVE",
+      id: {
+        not: userId,
+      },
+    },
+  });
+
+  if (activeOwnerCount === 0) {
+    const error = new Error("At least one active owner is required");
+    error.status = 400;
+    throw error;
+  }
+};
+
+const createSettingsUser = async (data) => {
+  await ensureUsernameIsAvailable(data.username);
+
+  const passwordHash = await bcrypt.hash(data.password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      name: data.name,
+      username: data.username,
+      passwordHash,
+      role: data.role,
+      status: "ACTIVE",
+    },
+    select: userSelect,
+  });
+
+  return user;
+};
+
+const updateSettingsUser = async (id, data) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  await ensureUsernameIsAvailable(data.username, id);
+
+  return prisma.user.update({
+    where: {
+      id,
+    },
+    data: {
+      name: data.name,
+      username: data.username,
+    },
+    select: userSelect,
+  });
+};
+
+const updateSettingsUserRole = async (id, role, currentUserId) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (id === currentUserId) {
+    const error = new Error("You cannot change your own role");
+    error.status = 400;
+    throw error;
+  }
+
+  if (user.role === "OWNER" && role !== "OWNER") {
+    await ensureAnotherActiveOwnerExists(id);
+  }
+
+  return prisma.user.update({
+    where: {
+      id,
+    },
+    data: {
+      role,
+    },
+    select: userSelect,
+  });
+};
+
+const updateSettingsUserStatus = async (id, status, currentUserId) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (id === currentUserId && status === "INACTIVE") {
+    const error = new Error("You cannot deactivate your own account");
+    error.status = 400;
+    throw error;
+  }
+
+  if (user.role === "OWNER" && status === "INACTIVE") {
+    await ensureAnotherActiveOwnerExists(id);
+  }
+
+  return prisma.user.update({
+    where: {
+      id,
+    },
+    data: {
+      status,
+    },
+    select: userSelect,
+  });
+};
+
+const resetSettingsUserPassword = async (id, password) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  return prisma.user.update({
+    where: {
+      id,
+    },
+    data: {
+      passwordHash,
+    },
+    select: userSelect,
+  });
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -342,4 +552,11 @@ module.exports = {
   updateStoreBankAccount,
   setDefaultStoreBankAccount,
   updateStoreBankAccountStatus,
+  getSettingsUsers,
+  getSettingsUserById,
+  createSettingsUser,
+  updateSettingsUser,
+  updateSettingsUserRole,
+  updateSettingsUserStatus,
+  resetSettingsUserPassword,
 };

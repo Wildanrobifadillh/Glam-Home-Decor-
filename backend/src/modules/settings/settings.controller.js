@@ -4,6 +4,11 @@ const {
   createStoreBankAccountSchema,
   updateStoreBankAccountSchema,
   updateStoreBankAccountStatusSchema,
+  createSettingsUserSchema,
+  updateSettingsUserSchema,
+  updateSettingsUserRoleSchema,
+  updateSettingsUserStatusSchema,
+  resetSettingsUserPasswordSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -155,6 +160,142 @@ const updateStoreBankAccountStatus = async (req, res, next) => {
   }
 };
 
+const getSettingsUsers = async (req, res, next) => {
+  try {
+    const users = await settingsService.getSettingsUsers();
+
+    return res.status(200).json({
+      success: true,
+      message: "Users retrieved successfully",
+      data: {
+        users,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSettingsUserById = async (req, res, next) => {
+  try {
+    const user = await settingsService.getSettingsUserById(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "User retrieved successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createSettingsUser = async (req, res, next) => {
+  try {
+    const validatedData = createSettingsUserSchema.parse(req.body);
+
+    const user = await settingsService.createSettingsUser(validatedData);
+
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettingsUser = async (req, res, next) => {
+  try {
+    const validatedData = updateSettingsUserSchema.parse(req.body);
+
+    const user = await settingsService.updateSettingsUser(
+      req.params.id,
+      validatedData
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettingsUserRole = async (req, res, next) => {
+  try {
+    const validatedData = updateSettingsUserRoleSchema.parse(req.body);
+
+    const user = await settingsService.updateSettingsUserRole(
+      req.params.id,
+      validatedData.role,
+      req.user.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User role updated successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettingsUserStatus = async (req, res, next) => {
+  try {
+    const validatedData = updateSettingsUserStatusSchema.parse(req.body);
+
+    const user = await settingsService.updateSettingsUserStatus(
+      req.params.id,
+      validatedData.status,
+      req.user.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User status updated successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetSettingsUserPassword = async (req, res, next) => {
+  try {
+    const validatedData = resetSettingsUserPasswordSchema.parse(req.body);
+
+    const user = await settingsService.resetSettingsUserPassword(
+      req.params.id,
+      validatedData.password
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User password reset successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -164,4 +305,11 @@ module.exports = {
   updateStoreBankAccount,
   setDefaultStoreBankAccount,
   updateStoreBankAccountStatus,
+  getSettingsUsers,
+  getSettingsUserById,
+  createSettingsUser,
+  updateSettingsUser,
+  updateSettingsUserRole,
+  updateSettingsUserStatus,
+  resetSettingsUserPassword,
 };

@@ -67,9 +67,79 @@ const updateStoreBankAccountStatusSchema = z.object({
   }),
 });
 
+const createSettingsUserSchema = z.object({
+  name: z
+    .string({
+      required_error: "Name is required",
+    })
+    .trim()
+    .min(1, "Name is required"),
+
+  username: z
+    .string({
+      required_error: "Username is required",
+    })
+    .trim()
+    .min(3, "Username must be at least 3 characters"),
+
+  password: z
+    .string({
+      required_error: "Password is required",
+    })
+    .min(6, "Password must be at least 6 characters"),
+
+  role: z.enum(["OWNER", "ADMIN_STAFF", "STAFF_GUDANG"], {
+    required_error: "Role is required",
+    invalid_type_error: "Invalid role",
+  }),
+});
+
+const updateSettingsUserSchema = z.object({
+  name: z
+    .string({
+      required_error: "Name is required",
+    })
+    .trim()
+    .min(1, "Name is required"),
+
+  username: z
+    .string({
+      required_error: "Username is required",
+    })
+    .trim()
+    .min(3, "Username must be at least 3 characters"),
+});
+
+const updateSettingsUserRoleSchema = z.object({
+  role: z.enum(["OWNER", "ADMIN_STAFF", "STAFF_GUDANG"], {
+    required_error: "Role is required",
+    invalid_type_error: "Invalid role",
+  }),
+});
+
+const updateSettingsUserStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE"], {
+    required_error: "Status is required",
+    invalid_type_error: "Invalid status",
+  }),
+});
+
+const resetSettingsUserPasswordSchema = z.object({
+  password: z
+    .string({
+      required_error: "Password is required",
+    })
+    .min(6, "Password must be at least 6 characters"),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
   updateStoreBankAccountSchema,
   updateStoreBankAccountStatusSchema,
+  createSettingsUserSchema,
+  updateSettingsUserSchema,
+  updateSettingsUserRoleSchema,
+  updateSettingsUserStatusSchema,
+  resetSettingsUserPasswordSchema,
 };

@@ -62,4 +62,53 @@ router.patch(
   settingsController.updateStoreBankAccountStatus
 );
 
+router.get(
+  "/users",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getSettingsUsers
+);
+
+router.post(
+  "/users",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.createSettingsUser
+);
+
+router.get(
+  "/users/:id",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getSettingsUserById
+);
+
+router.put(
+  "/users/:id",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateSettingsUser
+);
+
+router.patch(
+  "/users/:id/role",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateSettingsUserRole
+);
+
+router.patch(
+  "/users/:id/status",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateSettingsUserStatus
+);
+
+router.patch(
+  "/users/:id/reset-password",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.resetSettingsUserPassword
+);
+
 module.exports = router;
