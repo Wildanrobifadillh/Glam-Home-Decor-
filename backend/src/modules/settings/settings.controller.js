@@ -12,6 +12,7 @@ const {
   updateSettingsEmployeeSchema,
   updateSettingsEmployeeStatusSchema,
   linkSettingsEmployeeUserSchema,
+  updateRolePermissionsSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -414,6 +415,91 @@ const unlinkSettingsEmployeeUser = async (req, res, next) => {
   }
 };
 
+const getSettingsModules = async (req, res, next) => {
+  try {
+    const modules = await settingsService.getSettingsModules();
+
+    return res.status(200).json({
+      success: true,
+      message: "Settings modules retrieved successfully",
+      data: {
+        modules,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAllRolePermissions = async (req, res, next) => {
+  try {
+    const rolePermissions = await settingsService.getAllRolePermissions();
+
+    return res.status(200).json({
+      success: true,
+      message: "Role permissions retrieved successfully",
+      data: rolePermissions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRolePermissionsByRole = async (req, res, next) => {
+  try {
+    const rolePermissions = await settingsService.getRolePermissionsByRole(
+      req.params.role
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Role permission retrieved successfully",
+      data: {
+        rolePermissions,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateRolePermissions = async (req, res, next) => {
+  try {
+    const validatedData = updateRolePermissionsSchema.parse(req.body);
+
+    const rolePermissions = await settingsService.updateRolePermissions(
+      req.params.role,
+      validatedData.moduleKeys
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Role permissions updated successfully",
+      data: {
+        rolePermissions,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyPermissions = async (req, res, next) => {
+  try {
+    const myPermissions = await settingsService.getMyPermissions(req.user.role);
+
+    return res.status(200).json({
+      success: true,
+      message: "My permissions retrieved successfully",
+      data: {
+        myPermissions,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -436,4 +522,9 @@ module.exports = {
   updateSettingsEmployeeStatus,
   linkSettingsEmployeeUser,
   unlinkSettingsEmployeeUser,
+  getSettingsModules,
+  getAllRolePermissions,
+  getRolePermissionsByRole,
+  updateRolePermissions,
+  getMyPermissions,
 };

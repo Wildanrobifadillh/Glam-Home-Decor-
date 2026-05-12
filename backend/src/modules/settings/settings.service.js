@@ -712,6 +712,297 @@ const unlinkSettingsEmployeeUser = async (id) => {
   });
 };
 
+const SETTINGS_MODULES = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    group: "Umum",
+  },
+  {
+    key: "categories",
+    label: "Kategori",
+    group: "Master Data",
+  },
+  {
+    key: "products",
+    label: "Barang",
+    group: "Master Data",
+  },
+  {
+    key: "suppliers",
+    label: "Supplier",
+    group: "Master Data",
+  },
+  {
+    key: "customers",
+    label: "Pelanggan",
+    group: "Master Data",
+  },
+  {
+    key: "employees",
+    label: "Karyawan",
+    group: "Master Data",
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    group: "Stok",
+  },
+  {
+    key: "stock_history",
+    label: "Histori Stok",
+    group: "Stok",
+  },
+  {
+    key: "stock_opname",
+    label: "Stock Opname",
+    group: "Stok",
+  },
+  {
+    key: "purchases",
+    label: "Pembelian",
+    group: "Transaksi",
+  },
+  {
+    key: "sales",
+    label: "Penjualan",
+    group: "Transaksi",
+  },
+  {
+    key: "sale_returns",
+    label: "Retur Penjualan",
+    group: "Transaksi",
+  },
+  {
+    key: "purchase_returns",
+    label: "Retur Pembelian",
+    group: "Transaksi",
+  },
+  {
+    key: "receivables",
+    label: "Piutang",
+    group: "Keuangan",
+  },
+  {
+    key: "payables",
+    label: "Hutang",
+    group: "Keuangan",
+  },
+  {
+    key: "expenses",
+    label: "Beban Operasional",
+    group: "Keuangan",
+  },
+  {
+    key: "payroll",
+    label: "Payroll",
+    group: "Keuangan",
+  },
+  {
+    key: "accounting",
+    label: "Akuntansi",
+    group: "Akuntansi",
+  },
+  {
+    key: "journal_entries",
+    label: "Jurnal",
+    group: "Akuntansi",
+  },
+  {
+    key: "reports",
+    label: "Laporan",
+    group: "Laporan",
+  },
+  {
+    key: "settings",
+    label: "Pengaturan",
+    group: "Sistem",
+  },
+];
+
+const DEFAULT_ROLE_MODULES = {
+  ADMIN_STAFF: [
+    "dashboard",
+    "categories",
+    "products",
+    "suppliers",
+    "customers",
+    "employees",
+    "purchases",
+    "sales",
+    "sale_returns",
+    "purchase_returns",
+    "receivables",
+    "payables",
+    "expenses",
+    "reports",
+  ],
+  STAFF_GUDANG: [
+    "dashboard",
+    "products",
+    "inventory",
+    "stock_history",
+    "stock_opname",
+    "sale_returns",
+    "purchase_returns",
+  ],
+};
+
+const MANAGEABLE_PERMISSION_ROLES = ["ADMIN_STAFF", "STAFF_GUDANG"];
+
+const getSettingsModules = async () => {
+  return SETTINGS_MODULES;
+};
+
+const getModuleKeys = () => SETTINGS_MODULES.map((module) => module.key);
+
+const validatePermissionRole = (role) => {
+  if (role === "OWNER") {
+    const error = new Error("Owner always has full access");
+    error.status = 400;
+    throw error;
+  }
+
+  if (!MANAGEABLE_PERMISSION_ROLES.includes(role)) {
+    const error = new Error("Invalid role permission");
+    error.status = 400;
+    throw error;
+  }
+};
+
+const validateModuleKeys = (moduleKeys) => {
+  const availableModuleKeys = getModuleKeys();
+
+  for (const moduleKey of moduleKeys) {
+    if (!availableModuleKeys.includes(moduleKey)) {
+      const error = new Error(`Invalid module key: ${moduleKey}`);
+      error.status = 400;
+      throw error;
+    }
+  }
+};
+
+const getOwnerPermissions = () => {
+  return {
+    role: "OWNER",
+    permissions: SETTINGS_MODULES.map((module) => ({
+      ...module,
+      canAccess: true,
+    })),
+  };
+};
+
+const ensureDefaultRolePermissions = async (role) => {
+  validatePermissionRole(role);
+
+  const defaultModuleKeys = DEFAULT_ROLE_MODULES[role] || [];
+
+  for (const module of SETTINGS_MODULES) {
+    await prisma.rolePermission.upsert({
+      where: {
+        role_moduleKey: {
+          role,
+          moduleKey: module.key,
+        },
+      },
+      update: {},
+      create: {
+        role,
+        moduleKey: module.key,
+        canAccess: defaultModuleKeys.includes(module.key),
+      },
+    });
+  }
+};
+
+const buildRolePermissionResponse = (role, rolePermissions) => {
+  return {
+    role,
+    permissions: SETTINGS_MODULES.map((module) => {
+      const permission = rolePermissions.find(
+        (item) => item.moduleKey === module.key
+      );
+
+      return {
+        ...module,
+        canAccess: permission ? permission.canAccess : false,
+      };
+    }),
+  };
+};
+
+const getRolePermissionsByRole = async (role) => {
+  if (role === "OWNER") {
+    return getOwnerPermissions();
+  }
+
+  validatePermissionRole(role);
+
+  await ensureDefaultRolePermissions(role);
+
+  const rolePermissions = await prisma.rolePermission.findMany({
+    where: {
+      role,
+    },
+    orderBy: {
+      moduleKey: "asc",
+    },
+  });
+
+  return buildRolePermissionResponse(role, rolePermissions);
+};
+
+const getAllRolePermissions = async () => {
+  const adminStaffPermissions = await getRolePermissionsByRole("ADMIN_STAFF");
+  const staffGudangPermissions = await getRolePermissionsByRole("STAFF_GUDANG");
+
+  return {
+    roles: [
+      getOwnerPermissions(),
+      adminStaffPermissions,
+      staffGudangPermissions,
+    ],
+  };
+};
+
+const updateRolePermissions = async (role, moduleKeys) => {
+  validatePermissionRole(role);
+  validateModuleKeys(moduleKeys);
+
+  const enabledModuleKeys = new Set(moduleKeys);
+
+  await prisma.$transaction(async (tx) => {
+    for (const module of SETTINGS_MODULES) {
+      await tx.rolePermission.upsert({
+        where: {
+          role_moduleKey: {
+            role,
+            moduleKey: module.key,
+          },
+        },
+        update: {
+          canAccess: enabledModuleKeys.has(module.key),
+        },
+        create: {
+          role,
+          moduleKey: module.key,
+          canAccess: enabledModuleKeys.has(module.key),
+        },
+      });
+    }
+  });
+
+  return getRolePermissionsByRole(role);
+};
+
+const getMyPermissions = async (role) => {
+  if (role === "OWNER") {
+    return getOwnerPermissions();
+  }
+
+  return getRolePermissionsByRole(role);
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -734,4 +1025,9 @@ module.exports = {
   updateSettingsEmployeeStatus,
   linkSettingsEmployeeUser,
   unlinkSettingsEmployeeUser,
+  getSettingsModules,
+  getAllRolePermissions,
+  getRolePermissionsByRole,
+  updateRolePermissions,
+  getMyPermissions,
 };

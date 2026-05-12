@@ -176,6 +176,14 @@ const linkSettingsEmployeeUserSchema = z.object({
     .uuid("Invalid user ID"),
 });
 
+const updateRolePermissionsSchema = z.object({
+  moduleKeys: z
+    .array(z.string().trim().min(1, "Module key is required"), {
+      required_error: "Module keys are required",
+    })
+    .default([]),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
@@ -189,4 +197,5 @@ module.exports = {
   updateSettingsEmployeeSchema,
   updateSettingsEmployeeStatusSchema,
   linkSettingsEmployeeUserSchema,
+  updateRolePermissionsSchema,
 };

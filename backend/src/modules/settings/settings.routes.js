@@ -63,6 +63,40 @@ router.patch(
 );
 
 router.get(
+  "/modules",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getSettingsModules
+);
+
+router.get(
+  "/role-permissions",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getAllRolePermissions
+);
+
+router.get(
+  "/role-permissions/:role",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getRolePermissionsByRole
+);
+
+router.put(
+  "/role-permissions/:role",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateRolePermissions
+);
+
+router.get(
+  "/my-permissions",
+  authenticate,
+  settingsController.getMyPermissions
+);
+
+router.get(
   "/users",
   authenticate,
   authorizeRoles("OWNER"),
