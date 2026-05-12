@@ -6,6 +6,8 @@ const {
   getCashBankAccountForPayment,
 } = require("../../utils/accountingJournal");
 
+const OPERATIONAL_PREFERENCE_KEY = "MAIN";
+
 const getPaymentStatus = (totalAmount, paidAmount) => {
   if (paidAmount === 0) {
     return "UNPAID";
@@ -16,6 +18,21 @@ const getPaymentStatus = (totalAmount, paidAmount) => {
   }
 
   return "PAID";
+};
+
+const getDefaultOperationalPreferencesData = () => ({
+  key: OPERATIONAL_PREFERENCE_KEY,
+  defaultReceivableDueDays: 7,
+  defaultPayableDueDays: 14,
+  defaultPaymentMethod: "CASH",
+  defaultCashBankAccountId: null,
+  requireReceivableApproval: true,
+});
+
+const addDays = (date, days) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 };
 
 const createSaleStockHistories = async ({ tx, sale, items, createdById }) => {
@@ -195,6 +212,7 @@ const getAllSales = async () => {
           product: true,
         },
       },
+      additionalCosts: true,
       approvalHistories: {
         include: {
           createdBy: {
@@ -252,6 +270,7 @@ const getSaleById = async (id) => {
           },
         },
       },
+      additionalCosts: true,
       approvalHistories: {
         include: {
           createdBy: {
@@ -302,6 +321,10 @@ const createSale = async ({
   paidAmount,
   paymentMethod,
   cashBankAccountId,
+  discountAmount,
+  taxAmount,
+  dueDate,
+  additionalCosts,
   note,
   items,
   createdById,
@@ -338,6 +361,14 @@ const createSale = async ({
       );
     }
 
+    const operationalPreference = await tx.operationalPreference.upsert({
+      where: {
+        key: OPERATIONAL_PREFERENCE_KEY,
+      },
+      update: {},
+      create: getDefaultOperationalPreferencesData(),
+    });
+
     const productIds = items.map((item) => item.productId);
     const uniqueProductIds = [...new Set(productIds)];
 
@@ -363,7 +394,10 @@ const createSale = async ({
       }
     }
 
-    let totalAmount = 0;
+    const normalizedDiscountAmount = discountAmount || 0;
+    const normalizedTaxAmount = taxAmount || 0;
+
+    let itemSubtotalAmount = 0;
 
     const saleItemsData = items.map((item) => {
       const product = products.find(
@@ -374,7 +408,7 @@ const createSale = async ({
       const subtotal = item.quantity * item.sellingPrice;
       const profit = (item.sellingPrice - costPrice) * item.quantity;
 
-      totalAmount += subtotal;
+      itemSubtotalAmount += subtotal;
 
       return {
         productId: item.productId,
@@ -385,6 +419,31 @@ const createSale = async ({
         subtotal,
       };
     });
+
+    const additionalCostsData = (additionalCosts || []).map(
+      (additionalCost) => ({
+        name: additionalCost.name,
+        amount: additionalCost.amount,
+        note: additionalCost.note,
+      })
+    );
+
+    const totalAdditionalCostAmount = additionalCostsData.reduce(
+      (total, additionalCost) => total + additionalCost.amount,
+      0
+    );
+
+    const totalAmount =
+      itemSubtotalAmount -
+      normalizedDiscountAmount +
+      normalizedTaxAmount +
+      totalAdditionalCostAmount;
+
+    if (totalAmount < 0) {
+      const error = new Error("Total amount cannot be negative");
+      error.status = 400;
+      throw error;
+    }
 
     if (paidAmount > totalAmount) {
       const error = new Error("Paid amount cannot exceed total amount");
@@ -397,9 +456,17 @@ const createSale = async ({
     const saleNumber = generateSaleNumber();
 
     const isReceivable = remainingAmount > 0;
-    const needsOwnerApproval = isReceivable && createdByRole !== "OWNER";
+    const needsOwnerApproval =
+      isReceivable &&
+      operationalPreference.requireReceivableApproval &&
+      createdByRole !== "OWNER";
 
     const saleStatus = needsOwnerApproval ? "PENDING_APPROVAL" : "COMPLETED";
+
+    const saleDueDate = isReceivable
+      ? dueDate ||
+        addDays(new Date(), operationalPreference.defaultReceivableDueDays)
+      : null;
 
     const sale = await tx.sale.create({
       data: {
@@ -410,6 +477,9 @@ const createSale = async ({
         totalAmount,
         paidAmount,
         remainingAmount,
+        discountAmount: normalizedDiscountAmount,
+        taxAmount: normalizedTaxAmount,
+        dueDate: saleDueDate,
         paymentStatus,
         paymentMethod,
         cashBankAccountId,
@@ -419,9 +489,16 @@ const createSale = async ({
         items: {
           create: saleItemsData,
         },
+        additionalCosts:
+          additionalCostsData.length > 0
+            ? {
+                create: additionalCostsData,
+              }
+            : undefined,
       },
       include: {
         items: true,
+        additionalCosts: true,
       },
     });
 
@@ -467,6 +544,7 @@ const createSale = async ({
             },
           },
         },
+        additionalCosts: true,
         approvalHistories: true,
         receivablePayments: true,
       },
@@ -551,6 +629,7 @@ const approveSale = async ({ saleId, note, createdById }) => {
             product: true,
           },
         },
+        additionalCosts: true,
         approvalHistories: {
           include: {
             createdBy: {
@@ -626,6 +705,7 @@ const rejectSale = async ({ saleId, note, createdById }) => {
             product: true,
           },
         },
+        additionalCosts: true,
         approvalHistories: {
           include: {
             createdBy: {
@@ -743,6 +823,7 @@ const paySale = async ({
             },
           },
         },
+        additionalCosts: true,
         approvalHistories: {
           include: {
             createdBy: {

@@ -387,12 +387,17 @@ model PurchaseReturnItem {
 model Sale {
   id                String        @id @default(uuid()) @db.Uuid
   saleNumber        String        @unique @map("sale_number")
+  invoiceNumber     String?       @unique @map("invoice_number")
+  invoiceDate       DateTime?     @map("invoice_date")
+  dueDate           DateTime?     @map("due_date")
   customerId        String?       @map("customer_id") @db.Uuid
   customerName      String?       @map("customer_name")
   customerPhone     String?       @map("customer_phone")
   totalAmount       Int           @map("total_amount")
   paidAmount        Int           @default(0) @map("paid_amount")
   remainingAmount   Int           @map("remaining_amount")
+  discountAmount    Int           @default(0) @map("discount_amount")
+  taxAmount         Int           @default(0) @map("tax_amount")
   paymentStatus     PaymentStatus @map("payment_status")
   paymentMethod     PaymentMethod @default(CASH) @map("payment_method")
   cashBankAccountId String?       @map("cash_bank_account_id") @db.Uuid
@@ -406,6 +411,7 @@ model Sale {
   createdBy          User                  @relation("SaleCreatedBy", fields: [createdById], references: [id])
   cashBankAccount    CashBankAccount?      @relation("SaleCashBankAccount", fields: [cashBankAccountId], references: [id])
   items              SaleItem[]
+  additionalCosts    SaleAdditionalCost[]
   saleReturns        SaleReturn[]
   approvalHistories  SaleApprovalHistory[]
   receivablePayments ReceivablePayment[]
@@ -427,6 +433,20 @@ model SaleItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("sale_items")
+}
+
+model SaleAdditionalCost {
+  id        String   @id @default(uuid()) @db.Uuid
+  saleId    String   @map("sale_id") @db.Uuid
+  name      String
+  amount    Int
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sale Sale @relation(fields: [saleId], references: [id])
+
+  @@map("sale_additional_costs")
 }
 
 model SaleReturn {

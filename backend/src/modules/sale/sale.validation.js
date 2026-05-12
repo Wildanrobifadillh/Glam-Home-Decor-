@@ -22,6 +22,24 @@ const saleItemSchema = z.object({
     .nonnegative("Selling price cannot be negative"),
 });
 
+const saleAdditionalCostSchema = z.object({
+  name: z
+    .string({
+      required_error: "Additional cost name is required",
+    })
+    .trim()
+    .min(1, "Additional cost name is required"),
+
+  amount: z.coerce
+    .number({
+      required_error: "Additional cost amount is required",
+    })
+    .int("Additional cost amount must be an integer")
+    .positive("Additional cost amount must be greater than 0"),
+
+  note: z.string().trim().optional(),
+});
+
 const createSaleSchema = z
   .object({
     customerId: z.string().uuid("Invalid customer ID").optional(),
@@ -43,6 +61,24 @@ const createSaleSchema = z
       .string()
       .uuid("Invalid cash/bank account ID")
       .optional(),
+
+    discountAmount: z.coerce
+      .number()
+      .int("Discount amount must be an integer")
+      .nonnegative("Discount amount cannot be negative")
+      .optional()
+      .default(0),
+
+    taxAmount: z.coerce
+      .number()
+      .int("Tax amount must be an integer")
+      .nonnegative("Tax amount cannot be negative")
+      .optional()
+      .default(0),
+
+    dueDate: z.coerce.date().optional(),
+
+    additionalCosts: z.array(saleAdditionalCostSchema).optional().default([]),
 
     note: z.string().trim().optional(),
 
@@ -71,7 +107,8 @@ const createSaleSchema = z
     },
     {
       field: "cashBankAccountId",
-      message: "Cash/bank account is required when paid amount is greater than 0",
+      message:
+        "Cash/bank account is required when paid amount is greater than 0",
     }
   );
 
