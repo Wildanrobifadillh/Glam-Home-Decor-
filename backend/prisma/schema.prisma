@@ -664,3 +664,17 @@ model RolePermission {
   @@unique([role, moduleKey])
   @@map("role_permissions")
 }
+
+model OperationalPreference {
+  id                        String        @id @default(uuid()) @db.Uuid
+  key                       String        @unique @default("MAIN")
+  defaultReceivableDueDays  Int           @default(7) @map("default_receivable_due_days")
+  defaultPayableDueDays     Int           @default(14) @map("default_payable_due_days")
+  defaultPaymentMethod      PaymentMethod @default(CASH) @map("default_payment_method")
+  defaultCashBankAccountId  String?       @map("default_cash_bank_account_id") @db.Uuid
+  requireReceivableApproval Boolean       @default(true) @map("require_receivable_approval")
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+
+  @@map("operational_preferences")
+}

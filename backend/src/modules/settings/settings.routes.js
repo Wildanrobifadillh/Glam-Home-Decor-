@@ -103,6 +103,20 @@ router.patch(
 );
 
 router.get(
+  "/operational-preferences",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  settingsController.getOperationalPreferences
+);
+
+router.put(
+  "/operational-preferences",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateOperationalPreferences
+);
+
+router.get(
   "/users",
   authenticate,
   authorizeRoles("OWNER"),

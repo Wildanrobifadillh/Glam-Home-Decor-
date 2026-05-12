@@ -198,6 +198,36 @@ const changePasswordSchema = z.object({
     .min(6, "New password must be at least 6 characters"),
 });
 
+const updateOperationalPreferencesSchema = z.object({
+  defaultReceivableDueDays: z.coerce
+    .number({
+      required_error: "Default receivable due days is required",
+    })
+    .int("Default receivable due days must be an integer")
+    .nonnegative("Default receivable due days cannot be negative"),
+
+  defaultPayableDueDays: z.coerce
+    .number({
+      required_error: "Default payable due days is required",
+    })
+    .int("Default payable due days must be an integer")
+    .nonnegative("Default payable due days cannot be negative"),
+
+  defaultPaymentMethod: z.enum(["CASH", "TRANSFER"], {
+    required_error: "Default payment method is required",
+    invalid_type_error: "Invalid payment method",
+  }),
+
+  defaultCashBankAccountId: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.string().uuid("Invalid cash/bank account ID").nullable().optional()
+  ),
+
+  requireReceivableApproval: z.coerce.boolean({
+    required_error: "Require receivable approval is required",
+  }),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
@@ -213,4 +243,5 @@ module.exports = {
   linkSettingsEmployeeUserSchema,
   updateRolePermissionsSchema,
   changePasswordSchema,
+  updateOperationalPreferencesSchema,
 };

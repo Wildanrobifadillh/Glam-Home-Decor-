@@ -14,6 +14,7 @@ const {
   linkSettingsEmployeeUserSchema,
   updateRolePermissionsSchema,
   changePasswordSchema,
+  updateOperationalPreferencesSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -523,6 +524,42 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const getOperationalPreferences = async (req, res, next) => {
+  try {
+    const operationalPreferences =
+      await settingsService.getOperationalPreferences();
+
+    return res.status(200).json({
+      success: true,
+      message: "Operational preferences retrieved successfully",
+      data: {
+        operationalPreferences,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateOperationalPreferences = async (req, res, next) => {
+  try {
+    const validatedData = updateOperationalPreferencesSchema.parse(req.body);
+
+    const operationalPreferences =
+      await settingsService.updateOperationalPreferences(validatedData);
+
+    return res.status(200).json({
+      success: true,
+      message: "Operational preferences updated successfully",
+      data: {
+        operationalPreferences,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -551,4 +588,6 @@ module.exports = {
   updateRolePermissions,
   getMyPermissions,
   changePassword,
+  getOperationalPreferences,
+  updateOperationalPreferences,
 };

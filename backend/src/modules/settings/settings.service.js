@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../../config/prisma");
 
+const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 const STORE_PROFILE_KEY = "MAIN";
 
 const getDefaultStoreProfileData = () => ({
@@ -1046,6 +1047,94 @@ const changePassword = async ({ userId, oldPassword, newPassword }) => {
   });
 };
 
+const getDefaultOperationalPreferencesData = () => ({
+  key: OPERATIONAL_PREFERENCE_KEY,
+  defaultReceivableDueDays: 7,
+  defaultPayableDueDays: 14,
+  defaultPaymentMethod: "CASH",
+  defaultCashBankAccountId: null,
+  requireReceivableApproval: true,
+});
+
+const validateDefaultCashBankAccount = async ({
+  defaultCashBankAccountId,
+  defaultPaymentMethod,
+}) => {
+  if (!defaultCashBankAccountId) {
+    return;
+  }
+
+  const cashBankAccount = await prisma.cashBankAccount.findUnique({
+    where: {
+      id: defaultCashBankAccountId,
+    },
+  });
+
+  if (!cashBankAccount) {
+    const error = new Error("Default cash/bank account not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (cashBankAccount.status !== "ACTIVE") {
+    const error = new Error("Default cash/bank account is inactive");
+    error.status = 400;
+    throw error;
+  }
+
+  if (defaultPaymentMethod === "CASH" && cashBankAccount.type !== "CASH") {
+    const error = new Error("Default payment method CASH must use cash account");
+    error.status = 400;
+    throw error;
+  }
+
+  if (defaultPaymentMethod === "TRANSFER" && cashBankAccount.type !== "BANK") {
+    const error = new Error(
+      "Default payment method TRANSFER must use bank account"
+    );
+    error.status = 400;
+    throw error;
+  }
+};
+
+const getOperationalPreferences = async () => {
+  return prisma.operationalPreference.upsert({
+    where: {
+      key: OPERATIONAL_PREFERENCE_KEY,
+    },
+    update: {},
+    create: getDefaultOperationalPreferencesData(),
+  });
+};
+
+const updateOperationalPreferences = async (data) => {
+  await validateDefaultCashBankAccount({
+    defaultCashBankAccountId: data.defaultCashBankAccountId,
+    defaultPaymentMethod: data.defaultPaymentMethod,
+  });
+
+  return prisma.operationalPreference.upsert({
+    where: {
+      key: OPERATIONAL_PREFERENCE_KEY,
+    },
+    update: {
+      defaultReceivableDueDays: data.defaultReceivableDueDays,
+      defaultPayableDueDays: data.defaultPayableDueDays,
+      defaultPaymentMethod: data.defaultPaymentMethod,
+      defaultCashBankAccountId: data.defaultCashBankAccountId || null,
+      requireReceivableApproval: data.requireReceivableApproval,
+    },
+    create: {
+      key: OPERATIONAL_PREFERENCE_KEY,
+      defaultReceivableDueDays: data.defaultReceivableDueDays,
+      defaultPayableDueDays: data.defaultPayableDueDays,
+      defaultPaymentMethod: data.defaultPaymentMethod,
+      defaultCashBankAccountId: data.defaultCashBankAccountId || null,
+      requireReceivableApproval: data.requireReceivableApproval,
+    },
+  });
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -1074,4 +1163,6 @@ module.exports = {
   updateRolePermissions,
   getMyPermissions,
   changePassword,
+  getOperationalPreferences,
+  updateOperationalPreferences,
 };
