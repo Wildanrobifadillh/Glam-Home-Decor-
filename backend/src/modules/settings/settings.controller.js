@@ -9,6 +9,9 @@ const {
   updateSettingsUserRoleSchema,
   updateSettingsUserStatusSchema,
   resetSettingsUserPasswordSchema,
+  updateSettingsEmployeeSchema,
+  updateSettingsEmployeeStatusSchema,
+  linkSettingsEmployeeUserSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -296,6 +299,121 @@ const resetSettingsUserPassword = async (req, res, next) => {
   }
 };
 
+const getSettingsEmployees = async (req, res, next) => {
+  try {
+    const employees = await settingsService.getSettingsEmployees();
+
+    return res.status(200).json({
+      success: true,
+      message: "Employees retrieved successfully",
+      data: {
+        employees,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSettingsEmployeeById = async (req, res, next) => {
+  try {
+    const employee = await settingsService.getSettingsEmployeeById(
+      req.params.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee retrieved successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettingsEmployee = async (req, res, next) => {
+  try {
+    const validatedData = updateSettingsEmployeeSchema.parse(req.body);
+
+    const employee = await settingsService.updateSettingsEmployee(
+      req.params.id,
+      validatedData
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee updated successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettingsEmployeeStatus = async (req, res, next) => {
+  try {
+    const validatedData = updateSettingsEmployeeStatusSchema.parse(req.body);
+
+    const employee = await settingsService.updateSettingsEmployeeStatus(
+      req.params.id,
+      validatedData.status
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee status updated successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const linkSettingsEmployeeUser = async (req, res, next) => {
+  try {
+    const validatedData = linkSettingsEmployeeUserSchema.parse(req.body);
+
+    const employee = await settingsService.linkSettingsEmployeeUser(
+      req.params.id,
+      validatedData.userId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee linked to user successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const unlinkSettingsEmployeeUser = async (req, res, next) => {
+  try {
+    const employee = await settingsService.unlinkSettingsEmployeeUser(
+      req.params.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee unlinked from user successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -312,4 +430,10 @@ module.exports = {
   updateSettingsUserRole,
   updateSettingsUserStatus,
   resetSettingsUserPassword,
+  getSettingsEmployees,
+  getSettingsEmployeeById,
+  updateSettingsEmployee,
+  updateSettingsEmployeeStatus,
+  linkSettingsEmployeeUser,
+  unlinkSettingsEmployeeUser,
 };

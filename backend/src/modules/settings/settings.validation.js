@@ -132,6 +132,50 @@ const resetSettingsUserPasswordSchema = z.object({
     .min(6, "Password must be at least 6 characters"),
 });
 
+const updateSettingsEmployeeSchema = z.object({
+  name: z
+    .string({
+      required_error: "Employee name is required",
+    })
+    .trim()
+    .min(1, "Employee name is required"),
+
+  phone: z.string().trim().optional(),
+
+  address: z.string().trim().optional(),
+
+  position: z
+    .string({
+      required_error: "Position is required",
+    })
+    .trim()
+    .min(1, "Position is required"),
+
+  baseSalary: z.coerce
+    .number({
+      required_error: "Base salary is required",
+    })
+    .int("Base salary must be an integer")
+    .nonnegative("Base salary cannot be negative"),
+
+  joinedAt: z.coerce.date().optional(),
+});
+
+const updateSettingsEmployeeStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE"], {
+    required_error: "Status is required",
+    invalid_type_error: "Invalid status",
+  }),
+});
+
+const linkSettingsEmployeeUserSchema = z.object({
+  userId: z
+    .string({
+      required_error: "User is required",
+    })
+    .uuid("Invalid user ID"),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
@@ -142,4 +186,7 @@ module.exports = {
   updateSettingsUserRoleSchema,
   updateSettingsUserStatusSchema,
   resetSettingsUserPasswordSchema,
+  updateSettingsEmployeeSchema,
+  updateSettingsEmployeeStatusSchema,
+  linkSettingsEmployeeUserSchema,
 };

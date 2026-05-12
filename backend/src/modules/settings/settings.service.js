@@ -543,6 +543,175 @@ const resetSettingsUserPassword = async (id, password) => {
   });
 };
 
+const employeeInclude = {
+  user: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      role: true,
+      status: true,
+    },
+  },
+};
+
+const getSettingsEmployees = async () => {
+  return prisma.employee.findMany({
+    include: employeeInclude,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+};
+
+const getSettingsEmployeeById = async (id) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+    include: employeeInclude,
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return employee;
+};
+
+const ensureUserCanBeLinkedToEmployee = async (userId, employeeId) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const existingEmployee = await prisma.employee.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (existingEmployee && existingEmployee.id !== employeeId) {
+    const error = new Error("User is already linked to another employee");
+    error.status = 400;
+    throw error;
+  }
+
+  return user;
+};
+
+const updateSettingsEmployee = async (id, data) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data: {
+      name: data.name,
+      phone: normalizeEmptyString(data.phone),
+      address: normalizeEmptyString(data.address),
+      position: data.position,
+      baseSalary: data.baseSalary,
+      joinedAt: data.joinedAt,
+    },
+    include: employeeInclude,
+  });
+};
+
+const updateSettingsEmployeeStatus = async (id, status) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data: {
+      status,
+    },
+    include: employeeInclude,
+  });
+};
+
+const linkSettingsEmployeeUser = async (id, userId) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  await ensureUserCanBeLinkedToEmployee(userId, id);
+
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data: {
+      userId,
+    },
+    include: employeeInclude,
+  });
+};
+
+const unlinkSettingsEmployeeUser = async (id) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data: {
+      userId: null,
+    },
+    include: employeeInclude,
+  });
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -559,4 +728,10 @@ module.exports = {
   updateSettingsUserRole,
   updateSettingsUserStatus,
   resetSettingsUserPassword,
+  getSettingsEmployees,
+  getSettingsEmployeeById,
+  updateSettingsEmployee,
+  updateSettingsEmployeeStatus,
+  linkSettingsEmployeeUser,
+  unlinkSettingsEmployeeUser,
 };

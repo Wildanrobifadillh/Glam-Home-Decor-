@@ -111,4 +111,46 @@ router.patch(
   settingsController.resetSettingsUserPassword
 );
 
+router.get(
+  "/employees",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getSettingsEmployees
+);
+
+router.get(
+  "/employees/:id",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.getSettingsEmployeeById
+);
+
+router.put(
+  "/employees/:id",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateSettingsEmployee
+);
+
+router.patch(
+  "/employees/:id/status",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.updateSettingsEmployeeStatus
+);
+
+router.patch(
+  "/employees/:id/link-user",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.linkSettingsEmployeeUser
+);
+
+router.patch(
+  "/employees/:id/unlink-user",
+  authenticate,
+  authorizeRoles("OWNER"),
+  settingsController.unlinkSettingsEmployeeUser
+);
+
 module.exports = router;
