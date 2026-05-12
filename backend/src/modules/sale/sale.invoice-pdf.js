@@ -361,6 +361,10 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
 
   y += 70;
 
+  doc.font("Helvetica-Bold").fontSize(8);
+  drawText(doc, "Note:", margin, y, { width: contentWidth });
+  y += 12;
+
   doc.font("Helvetica").fontSize(8);
   drawText(doc, notes.transactionProofNote, margin, y, { width: contentWidth });
   y += 12;
@@ -372,31 +376,37 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   y += 18;
 
   drawText(doc, notes.thankYouNote, margin, y, { width: contentWidth });
-  y += 26;
 
   const signatureX = pageWidth - margin - 190;
+  const signatureY = y + 28;
+
   doc.font("Helvetica").fontSize(9);
-  drawText(doc, authorization.signatureText, signatureX, y, {
+  drawText(doc, "Hormat kami,", signatureX, signatureY, {
     width: 190,
     align: "center",
   });
 
-  y += 50;
+  drawText(doc, store.name, signatureX, signatureY + 14, {
+    width: 190,
+    align: "center",
+  });
+
+  const responsibleY = signatureY + 70;
 
   doc.font("Helvetica-Bold").fontSize(9);
-  drawText(doc, authorization.responsiblePersonName, signatureX, y, {
+  drawText(doc, authorization.responsiblePersonName, signatureX, responsibleY, {
     width: 190,
     align: "center",
   });
 
   doc.font("Helvetica").fontSize(8);
-  drawText(doc, authorization.responsiblePersonTitle, signatureX, y + 13, {
+  drawText(doc, authorization.responsiblePersonTitle, signatureX, responsibleY + 15, {
     width: 190,
     align: "center",
   });
 
-  doc.font("Helvetica").fontSize(7);
-  drawText(doc, `Dicetak oleh: ${createdBy.name}`, margin, doc.page.height - 40);
+  // doc.font("Helvetica").fontSize(7);
+  // drawText(doc, `Dicetak oleh: ${createdBy.name}`, margin, doc.page.height - 40);
 };
 
 const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
