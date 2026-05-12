@@ -129,6 +129,24 @@ const paySale = async (req, res, next) => {
   }
 };
 
+const getSaleInvoicePreview = async (req, res, next) => {
+  try {
+    const invoicePreview = await saleService.getSaleInvoicePreview(
+      req.params.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale invoice preview retrieved successfully",
+      data: {
+        invoicePreview,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -136,4 +154,5 @@ module.exports = {
   approveSale,
   rejectSale,
   paySale,
+  getSaleInvoicePreview,
 };

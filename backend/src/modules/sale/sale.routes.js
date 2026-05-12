@@ -7,6 +7,13 @@ const { authorizeRoles } = require("../../middlewares/role.middleware");
 const router = express.Router();
 
 router.get("/", authenticate, saleController.getAllSales);
+
+router.get(
+  "/:id/invoice-preview",
+  authenticate,
+  saleController.getSaleInvoicePreview
+);
+
 router.get("/:id", authenticate, saleController.getSaleById);
 
 router.post(

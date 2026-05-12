@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const settingsService = require("../settings/settings.service");
 const { generateSaleNumber } = require("../../utils/generateSaleNumber");
 const {
   createJournalEntryWithLines,
@@ -860,6 +861,218 @@ const paySale = async ({
   });
 };
 
+const getSaleInvoicePreview = async (saleId) => {
+  const sale = await prisma.sale.findUnique({
+    where: {
+      id: saleId,
+    },
+    include: {
+      customer: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            include: {
+              category: true,
+            },
+          },
+        },
+      },
+      additionalCosts: true,
+      receivablePayments: {
+        include: {
+          cashBankAccount: true,
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+    },
+  });
+
+  if (!sale) {
+    const error = new Error("Sale not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (sale.status === "REJECTED") {
+    const error = new Error("Rejected sale cannot generate invoice preview");
+    error.status = 400;
+    throw error;
+  }
+
+  const storeProfile = await settingsService.getStoreProfile();
+  const documentSetting = await settingsService.getDocumentSetting();
+
+  const defaultInvoiceBankAccount = await prisma.cashBankAccount.findFirst({
+    where: {
+      type: "BANK",
+      status: "ACTIVE",
+      isDefaultForInvoice: true,
+    },
+    include: {
+      account: true,
+    },
+  });
+
+  const itemSubtotalAmount = sale.items.reduce((total, item) => {
+    return total + item.subtotal;
+  }, 0);
+
+  const additionalCostAmount = sale.additionalCosts.reduce((total, cost) => {
+    return total + cost.amount;
+  }, 0);
+
+  const calculatedTotalAmount =
+    itemSubtotalAmount -
+    sale.discountAmount +
+    sale.taxAmount +
+    additionalCostAmount;
+
+  const paperSize = documentSetting.defaultPaperSize;
+  const maxItems =
+    paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
+
+  const copyLabels = [
+    documentSetting.copyLabel1,
+    documentSetting.copyLabel2,
+    documentSetting.copyLabel3,
+  ]
+    .slice(0, documentSetting.invoiceCopies)
+    .map((label, index) => ({
+      copyNumber: index + 1,
+      label,
+    }));
+
+  return {
+    invoice: {
+      saleId: sale.id,
+      saleNumber: sale.saleNumber,
+      invoiceNumber: sale.invoiceNumber,
+      previewNumber: sale.invoiceNumber || `DRAFT-${sale.saleNumber}`,
+      invoiceDate: sale.invoiceDate,
+      transactionDate: sale.createdAt,
+      dueDate: sale.dueDate,
+      saleStatus: sale.status,
+      paymentStatus: sale.paymentStatus,
+      paperSize,
+      maxItems,
+      invoiceCopies: documentSetting.invoiceCopies,
+      copyLabels,
+      isOfficialInvoice: Boolean(sale.invoiceNumber),
+    },
+    store: {
+      name: storeProfile.name,
+      legalName: storeProfile.legalName,
+      brandShortName: storeProfile.brandShortName,
+      address: storeProfile.address,
+      phone: storeProfile.phone,
+      email: storeProfile.email,
+      website: storeProfile.website,
+      socialMedia: storeProfile.socialMedia,
+      logoUrl: storeProfile.logoUrl,
+      taxNumber: storeProfile.taxNumber,
+      businessNumber: storeProfile.businessNumber,
+    },
+    customer: {
+      id: sale.customerId,
+      name: sale.customer ? sale.customer.name : sale.customerName,
+      phone: sale.customer ? sale.customer.phone : sale.customerPhone,
+      address: sale.customer ? sale.customer.address : null,
+      type: sale.customer ? sale.customer.type : null,
+    },
+    items: sale.items.map((item, index) => ({
+      no: index + 1,
+      productId: item.productId,
+      productCode: item.product.searchCode,
+      supplierCode: item.product.supplierCode,
+      productName: item.product.name,
+      categoryName: item.product.category ? item.product.category.name : null,
+      unit: item.product.unit,
+      quantity: item.quantity,
+      sellingPrice: item.sellingPrice,
+      subtotal: item.subtotal,
+    })),
+    summary: {
+      itemSubtotalAmount,
+      discountAmount: sale.discountAmount,
+      taxAmount: sale.taxAmount,
+      additionalCostAmount,
+      additionalCosts: sale.additionalCosts.map((cost) => ({
+        id: cost.id,
+        name: cost.name,
+        amount: cost.amount,
+        note: cost.note,
+      })),
+      calculatedTotalAmount,
+      totalAmount: sale.totalAmount,
+      isCalculationMatched: calculatedTotalAmount === sale.totalAmount,
+    },
+    payment: {
+      paymentMethod: sale.paymentMethod,
+      paidAmount: sale.paidAmount,
+      remainingAmount: sale.remainingAmount,
+      paymentStatus: sale.paymentStatus,
+      cashBankAccount: sale.cashBankAccount
+        ? {
+            id: sale.cashBankAccount.id,
+            name: sale.cashBankAccount.name,
+            type: sale.cashBankAccount.type,
+            bankName: sale.cashBankAccount.bankName,
+            accountNumber: sale.cashBankAccount.accountNumber,
+            accountHolderName: sale.cashBankAccount.accountHolderName,
+          }
+        : null,
+      receivablePayments: sale.receivablePayments,
+    },
+    invoiceBankAccount: defaultInvoiceBankAccount
+      ? {
+          id: defaultInvoiceBankAccount.id,
+          name: defaultInvoiceBankAccount.name,
+          bankName: defaultInvoiceBankAccount.bankName,
+          accountNumber: defaultInvoiceBankAccount.accountNumber,
+          accountHolderName: defaultInvoiceBankAccount.accountHolderName,
+        }
+      : null,
+    notes: {
+      saleNote: sale.note,
+      thankYouNote: documentSetting.thankYouNote,
+      transactionProofNote: documentSetting.transactionProofNote,
+      complaintTerms: documentSetting.complaintTerms,
+      returnTerms: documentSetting.returnTerms,
+      paymentTerms: documentSetting.paymentTerms,
+      additionalNote: documentSetting.additionalNote,
+    },
+    authorization: {
+      responsiblePersonName: documentSetting.responsiblePersonName,
+      responsiblePersonTitle: documentSetting.responsiblePersonTitle,
+      showSignature: documentSetting.showSignature,
+      signatureUrl: documentSetting.signatureUrl,
+      showStamp: documentSetting.showStamp,
+      stampUrl: documentSetting.stampUrl,
+      signatureText: documentSetting.signatureText,
+    },
+    createdBy: sale.createdBy,
+  };
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -867,4 +1080,5 @@ module.exports = {
   approveSale,
   rejectSale,
   paySale,
+  getSaleInvoicePreview,
 };
