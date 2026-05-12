@@ -184,6 +184,20 @@ const updateRolePermissionsSchema = z.object({
     .default([]),
 });
 
+const changePasswordSchema = z.object({
+  oldPassword: z
+    .string({
+      required_error: "Old password is required",
+    })
+    .min(1, "Old password is required"),
+
+  newPassword: z
+    .string({
+      required_error: "New password is required",
+    })
+    .min(6, "New password must be at least 6 characters"),
+});
+
 module.exports = {
   updateStoreProfileSchema,
   createStoreBankAccountSchema,
@@ -198,4 +212,5 @@ module.exports = {
   updateSettingsEmployeeStatusSchema,
   linkSettingsEmployeeUserSchema,
   updateRolePermissionsSchema,
+  changePasswordSchema,
 };

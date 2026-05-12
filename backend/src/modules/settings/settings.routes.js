@@ -96,6 +96,12 @@ router.get(
   settingsController.getMyPermissions
 );
 
+router.patch(
+  "/change-password",
+  authenticate,
+  settingsController.changePassword
+);
+
 router.get(
   "/users",
   authenticate,

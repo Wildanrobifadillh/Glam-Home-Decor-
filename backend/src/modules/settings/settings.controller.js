@@ -13,6 +13,7 @@ const {
   updateSettingsEmployeeStatusSchema,
   linkSettingsEmployeeUserSchema,
   updateRolePermissionsSchema,
+  changePasswordSchema,
 } = require("./settings.validation");
 
 const getStoreProfile = async (req, res, next) => {
@@ -500,6 +501,28 @@ const getMyPermissions = async (req, res, next) => {
   }
 };
 
+const changePassword = async (req, res, next) => {
+  try {
+    const validatedData = changePasswordSchema.parse(req.body);
+
+    const user = await settingsService.changePassword({
+      userId: req.user.id,
+      oldPassword: validatedData.oldPassword,
+      newPassword: validatedData.newPassword,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -527,4 +550,5 @@ module.exports = {
   getRolePermissionsByRole,
   updateRolePermissions,
   getMyPermissions,
+  changePassword,
 };

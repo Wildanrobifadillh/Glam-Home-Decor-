@@ -1003,6 +1003,49 @@ const getMyPermissions = async (role) => {
   return getRolePermissionsByRole(role);
 };
 
+const changePassword = async ({ userId, oldPassword, newPassword }) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (user.status !== "ACTIVE") {
+    const error = new Error("User account is inactive");
+    error.status = 403;
+    throw error;
+  }
+
+  const isOldPasswordValid = await bcrypt.compare(
+    oldPassword,
+    user.passwordHash
+  );
+
+  if (!isOldPasswordValid) {
+    const error = new Error("Old password is incorrect");
+    error.status = 400;
+    throw error;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+
+  return prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      passwordHash,
+    },
+    select: userSelect,
+  });
+};
+
 module.exports = {
   getStoreProfile,
   updateStoreProfile,
@@ -1030,4 +1073,5 @@ module.exports = {
   getRolePermissionsByRole,
   updateRolePermissions,
   getMyPermissions,
+  changePassword,
 };
