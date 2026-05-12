@@ -163,6 +163,22 @@ const generateSaleInvoice = async (req, res, next) => {
   }
 };
 
+const generateSaleInvoicePdf = async (req, res, next) => {
+  try {
+    const { pdfBuffer, fileName } = await saleService.generateSaleInvoicePdf(
+      req.params.id
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -172,4 +188,5 @@ module.exports = {
   paySale,
   getSaleInvoicePreview,
   generateSaleInvoice,
+  generateSaleInvoicePdf,
 };

@@ -14,6 +14,12 @@ router.get(
   saleController.getSaleInvoicePreview
 );
 
+router.get(
+  "/:id/invoice-pdf",
+  authenticate,
+  saleController.generateSaleInvoicePdf
+);
+
 router.get("/:id", authenticate, saleController.getSaleById);
 
 router.post(

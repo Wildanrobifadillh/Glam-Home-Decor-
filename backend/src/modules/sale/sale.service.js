@@ -6,6 +6,9 @@ const {
   getAccountByCode,
   getCashBankAccountForPayment,
 } = require("../../utils/accountingJournal");
+const {
+  generateSaleInvoicePdfBuffer,
+} = require("./sale.invoice-pdf");
 
 const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 
@@ -1223,6 +1226,37 @@ const generateSaleInvoice = async (saleId) => {
   };
 };
 
+const generateSaleInvoicePdf = async (saleId) => {
+  const invoicePreview = await getSaleInvoicePreview(saleId);
+
+  if (!invoicePreview.invoice.isOfficialInvoice) {
+    const error = new Error("Generate invoice number before creating PDF");
+    error.status = 400;
+    throw error;
+  }
+
+  if (invoicePreview.items.length > invoicePreview.invoice.maxItems) {
+    const error = new Error(
+      `Invoice item limit exceeded for ${invoicePreview.invoice.paperSize}. Maximum item is ${invoicePreview.invoice.maxItems}`
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  if (!invoicePreview.summary.isCalculationMatched) {
+    const error = new Error("Invoice calculation mismatch");
+    error.status = 400;
+    throw error;
+  }
+
+  const pdfBuffer = await generateSaleInvoicePdfBuffer(invoicePreview);
+
+  return {
+    pdfBuffer,
+    fileName: `${invoicePreview.invoice.invoiceNumber}.pdf`,
+  };
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -1232,4 +1266,5 @@ module.exports = {
   paySale,
   getSaleInvoicePreview,
   generateSaleInvoice,
+  generateSaleInvoicePdf,
 };
