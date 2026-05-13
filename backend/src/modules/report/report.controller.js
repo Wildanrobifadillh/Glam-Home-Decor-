@@ -170,6 +170,30 @@ const getOwnerSummary = async (req, res, next) => {
   }
 };
 
+const exportSalesReportExcel = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportSalesReportExcel({
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      paymentStatus: req.query.paymentStatus,
+      paymentMethod: req.query.paymentMethod,
+      status: req.query.status,
+      search: req.query.search,
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -181,4 +205,5 @@ module.exports = {
   getCashFlowReport,
   getBalanceSheetReport,
   getOwnerSummary,
+  exportSalesReportExcel,
 };

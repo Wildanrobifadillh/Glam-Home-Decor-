@@ -1,4 +1,7 @@
+const ExcelJS = require("exceljs");
+
 const prisma = require("../../config/prisma");
+const settingsService = require("../settings/settings.service");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -48,6 +51,105 @@ const getBalanceChangeByNormalBalance = ({ account, debit, credit }) => {
   }
 
   return credit - debit;
+};
+
+const formatDateForExcelFileName = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}${month}${day}`;
+};
+
+const formatDateForExcelCell = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value);
+};
+
+const getReportPeriodLabel = ({ startDate, endDate } = {}) => {
+  if (startDate && endDate) {
+    return `${startDate} s/d ${endDate}`;
+  }
+
+  if (startDate) {
+    return `Mulai ${startDate}`;
+  }
+
+  if (endDate) {
+    return `Sampai ${endDate}`;
+  }
+
+  return "Semua Periode";
+};
+
+const buildSalesExportWhere = ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const where = {
+    status: status || "COMPLETED",
+    ...buildTransactionDateWhere({ startDate, endDate }),
+  };
+
+  if (paymentStatus) {
+    where.paymentStatus = paymentStatus;
+  }
+
+  if (paymentMethod) {
+    where.paymentMethod = paymentMethod;
+  }
+
+  if (search) {
+    where.OR = [
+      {
+        saleNumber: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        invoiceNumber: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        customerName: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        customerPhone: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        note: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+    ];
+  }
+
+  return where;
+};
+
+const getSaleItemSubtotalAmount = (sale) => {
+  return sale.items.reduce((total, item) => total + item.subtotal, 0);
+};
+
+const getSaleAdditionalCostAmount = (sale) => {
+  return sale.additionalCosts.reduce((total, cost) => total + cost.amount, 0);
 };
 
 const getSalesReport = async ({ startDate, endDate } = {}) => {
@@ -809,6 +911,368 @@ const getOwnerSummary = async ({ startDate, endDate } = {}) => {
   };
 };
 
+const exportSalesReportExcel = async ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const sales = await prisma.sale.findMany({
+    where: buildSalesExportWhere({
+      startDate,
+      endDate,
+      paymentStatus,
+      paymentMethod,
+      status,
+      search,
+    }),
+    include: {
+      customer: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: true,
+        },
+      },
+      additionalCosts: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Penjualan");
+
+  worksheet.mergeCells("A1:S1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:S2");
+  worksheet.getCell("A2").value = "LAPORAN PENJUALAN";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:S3");
+  worksheet.getCell("A3").value = `Periode: ${getReportPeriodLabel({
+    startDate,
+    endDate,
+  })}`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+const salesReportColumns = [
+  {
+    label: "No",
+    key: "no",
+    width: 6,
+  },
+  {
+    label: "Tanggal",
+    key: "createdAt",
+    width: 16,
+  },
+  {
+    label: "No Penjualan",
+    key: "saleNumber",
+    width: 26,
+  },
+  {
+    label: "No Invoice",
+    key: "invoiceNumber",
+    width: 28,
+  },
+  {
+    label: "Customer",
+    key: "customerName",
+    width: 24,
+  },
+  {
+    label: "No HP",
+    key: "customerPhone",
+    width: 18,
+  },
+  {
+    label: "Status Penjualan",
+    key: "status",
+    width: 18,
+  },
+  {
+    label: "Status Pembayaran",
+    key: "paymentStatus",
+    width: 20,
+  },
+  {
+    label: "Metode Bayar",
+    key: "paymentMethod",
+    width: 16,
+  },
+  {
+    label: "Subtotal Barang",
+    key: "itemSubtotalAmount",
+    width: 18,
+  },
+  {
+    label: "Diskon",
+    key: "discountAmount",
+    width: 14,
+  },
+  {
+    label: "Pajak",
+    key: "taxAmount",
+    width: 14,
+  },
+  {
+    label: "Biaya Tambahan",
+    key: "additionalCostAmount",
+    width: 18,
+  },
+  {
+    label: "Total",
+    key: "totalAmount",
+    width: 16,
+  },
+  {
+    label: "Dibayar",
+    key: "paidAmount",
+    width: 16,
+  },
+  {
+    label: "Sisa",
+    key: "remainingAmount",
+    width: 16,
+  },
+  {
+    label: "Kas/Bank",
+    key: "cashBankAccountName",
+    width: 24,
+  },
+  {
+    label: "Dibuat Oleh",
+    key: "createdByName",
+    width: 20,
+  },
+  {
+    label: "Catatan",
+    key: "note",
+    width: 32,
+  },
+];
+
+worksheet.columns = salesReportColumns.map((column) => ({
+  key: column.key,
+  width: column.width,
+}));
+
+const headerRow = worksheet.getRow(5);
+headerRow.values = salesReportColumns.map((column) => column.label);
+headerRow.height = 22;
+
+salesReportColumns.forEach((column, index) => {
+  const cell = headerRow.getCell(index + 1);
+
+  cell.font = {
+    bold: true,
+    color: {
+      argb: "FFFFFFFF",
+    },
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: "FF1F4E78",
+    },
+  };
+
+  cell.alignment = {
+    vertical: "middle",
+    horizontal: "center",
+    wrapText: true,
+  };
+
+  cell.border = {
+    top: {
+      style: "thin",
+    },
+    left: {
+      style: "thin",
+    },
+    bottom: {
+      style: "thin",
+    },
+    right: {
+      style: "thin",
+    },
+  };
+});
+
+  let totalItemSubtotalAmount = 0;
+  let totalDiscountAmount = 0;
+  let totalTaxAmount = 0;
+  let totalAdditionalCostAmount = 0;
+  let totalAmount = 0;
+  let totalPaidAmount = 0;
+  let totalRemainingAmount = 0;
+
+  sales.forEach((sale, index) => {
+    const itemSubtotalAmount = getSaleItemSubtotalAmount(sale);
+    const additionalCostAmount = getSaleAdditionalCostAmount(sale);
+
+    totalItemSubtotalAmount += itemSubtotalAmount;
+    totalDiscountAmount += sale.discountAmount;
+    totalTaxAmount += sale.taxAmount;
+    totalAdditionalCostAmount += additionalCostAmount;
+    totalAmount += sale.totalAmount;
+    totalPaidAmount += sale.paidAmount;
+    totalRemainingAmount += sale.remainingAmount;
+
+    worksheet.addRow({
+      no: index + 1,
+      createdAt: formatDateForExcelCell(sale.createdAt),
+      saleNumber: sale.saleNumber,
+      invoiceNumber: sale.invoiceNumber || "-",
+      customerName: sale.customer ? sale.customer.name : sale.customerName || "-",
+      customerPhone: sale.customer
+        ? sale.customer.phone || "-"
+        : sale.customerPhone || "-",
+      status: sale.status,
+      paymentStatus: sale.paymentStatus,
+      paymentMethod: sale.paymentMethod,
+      itemSubtotalAmount,
+      discountAmount: sale.discountAmount,
+      taxAmount: sale.taxAmount,
+      additionalCostAmount,
+      totalAmount: sale.totalAmount,
+      paidAmount: sale.paidAmount,
+      remainingAmount: sale.remainingAmount,
+      cashBankAccountName: sale.cashBankAccount
+        ? sale.cashBankAccount.name
+        : "-",
+      createdByName: sale.createdBy ? sale.createdBy.name : "-",
+      note: sale.note || "-",
+    });
+  });
+
+  const totalRow = worksheet.addRow({
+    no: "",
+    createdAt: "",
+    saleNumber: "",
+    invoiceNumber: "",
+    customerName: "",
+    customerPhone: "",
+    status: "",
+    paymentStatus: "",
+    paymentMethod: "TOTAL",
+    itemSubtotalAmount: totalItemSubtotalAmount,
+    discountAmount: totalDiscountAmount,
+    taxAmount: totalTaxAmount,
+    additionalCostAmount: totalAdditionalCostAmount,
+    totalAmount,
+    paidAmount: totalPaidAmount,
+    remainingAmount: totalRemainingAmount,
+    cashBankAccountName: "",
+    createdByName: "",
+    note: "",
+  });
+
+  totalRow.font = {
+    bold: true,
+  };
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = [
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+  ];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.getColumn("B").numFmt = "dd mmmm yyyy";
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "S5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-penjualan-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -820,4 +1284,5 @@ module.exports = {
   getCashFlowReport,
   getBalanceSheetReport,
   getOwnerSummary,
+  exportSalesReportExcel,
 };

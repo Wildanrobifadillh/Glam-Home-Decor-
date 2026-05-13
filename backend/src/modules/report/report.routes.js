@@ -7,6 +7,13 @@ const { authorizeRoles } = require("../../middlewares/role.middleware");
 const router = express.Router();
 
 router.get(
+  "/sales/export-excel",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  reportController.exportSalesReportExcel
+);
+
+router.get(
   "/sales",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),
