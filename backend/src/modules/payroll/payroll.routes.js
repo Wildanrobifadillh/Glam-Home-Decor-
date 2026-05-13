@@ -21,6 +21,20 @@ router.get(
 );
 
 router.get(
+  "/:id/slip-preview",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  payrollController.getPayrollSlipPreview
+);
+
+router.get(
+  "/:id/slip-pdf",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  payrollController.generatePayrollSlipPdf
+);
+
+router.get(
   "/:id",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),

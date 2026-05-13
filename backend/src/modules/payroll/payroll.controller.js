@@ -84,9 +84,45 @@ const createPayroll = async (req, res, next) => {
   }
 };
 
+const getPayrollSlipPreview = async (req, res, next) => {
+  try {
+    const slipPreview = await payrollService.getPayrollSlipPreview(
+      req.params.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Payroll slip preview retrieved successfully",
+      data: {
+        slipPreview,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const generatePayrollSlipPdf = async (req, res, next) => {
+  try {
+    const { pdfBuffer, fileName } = await payrollService.generatePayrollSlipPdf(
+      req.params.id
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllPayrolls,
   getPayrollSummary,
   getPayrollById,
   createPayroll,
+  getPayrollSlipPreview,
+  generatePayrollSlipPdf,
 };

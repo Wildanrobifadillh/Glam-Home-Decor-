@@ -1,10 +1,15 @@
 const prisma = require("../../config/prisma");
+const settingsService = require("../settings/settings.service");
 const { generatePayrollNumber } = require("../../utils/generatePayrollNumber");
 const {
   createJournalEntryWithLines,
   getAccountByCode,
   getCashBankAccountForPayment,
 } = require("../../utils/accountingJournal");
+
+const {
+  generatePayrollSlipPdfBuffer,
+} = require("./payroll.slip-pdf");
 
 const getPayrollInclude = () => ({
   employee: {
@@ -384,9 +389,138 @@ const createPayroll = async ({
   });
 };
 
+const getMonthName = (month) => {
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
+  return monthNames[month - 1] || "-";
+};
+
+const getPayrollSlipPreview = async (payrollId) => {
+  const payroll = await getPayrollById(payrollId);
+
+  if (payroll.status !== "POSTED") {
+    const error = new Error("Only posted payroll can generate salary slip");
+    error.status = 400;
+    throw error;
+  }
+
+  const storeProfile = await settingsService.getStoreProfile();
+  const documentSetting = await settingsService.getDocumentSetting();
+
+  return {
+    slip: {
+      payrollId: payroll.id,
+      payrollNumber: payroll.payrollNumber,
+      slipNumber: payroll.payrollNumber,
+      periodMonth: payroll.periodMonth,
+      periodYear: payroll.periodYear,
+      periodLabel: `${getMonthName(payroll.periodMonth)} ${payroll.periodYear}`,
+      paidAt: payroll.paidAt,
+      status: payroll.status,
+      documentPrefix: documentSetting.payrollSlipPrefix,
+      paperSize: "A4",
+      isOfficialSlip: true,
+    },
+    store: {
+      name: storeProfile.name,
+      legalName: storeProfile.legalName,
+      brandShortName: storeProfile.brandShortName,
+      address: storeProfile.address,
+      phone: storeProfile.phone,
+      email: storeProfile.email,
+      website: storeProfile.website,
+      socialMedia: storeProfile.socialMedia,
+      logoUrl: storeProfile.logoUrl,
+      taxNumber: storeProfile.taxNumber,
+      businessNumber: storeProfile.businessNumber,
+    },
+    employee: {
+      id: payroll.employee.id,
+      name: payroll.employee.name,
+      phone: payroll.employee.phone,
+      address: payroll.employee.address,
+      position: payroll.employee.position,
+      joinedAt: payroll.employee.joinedAt,
+      status: payroll.employee.status,
+    },
+    salary: {
+      baseSalary: payroll.baseSalary,
+      allowance: payroll.allowance,
+      bonus: payroll.bonus,
+      deduction: payroll.deduction,
+      grossSalary: payroll.grossSalary,
+      netSalary: payroll.netSalary,
+      isCalculationMatched:
+        payroll.baseSalary + payroll.allowance + payroll.bonus ===
+          payroll.grossSalary &&
+        payroll.grossSalary - payroll.deduction === payroll.netSalary,
+    },
+    payment: {
+      paymentMethod: payroll.paymentMethod,
+      paidAt: payroll.paidAt,
+      cashBankAccount: payroll.cashBankAccount
+        ? {
+            id: payroll.cashBankAccount.id,
+            name: payroll.cashBankAccount.name,
+            type: payroll.cashBankAccount.type,
+            bankName: payroll.cashBankAccount.bankName,
+            accountNumber: payroll.cashBankAccount.accountNumber,
+            accountHolderName: payroll.cashBankAccount.accountHolderName,
+          }
+        : null,
+    },
+    notes: {
+      payrollNote: payroll.note,
+      additionalNote: documentSetting.additionalNote,
+    },
+    authorization: {
+      responsiblePersonName: documentSetting.responsiblePersonName,
+      responsiblePersonTitle: documentSetting.responsiblePersonTitle,
+      showSignature: documentSetting.showSignature,
+      signatureUrl: documentSetting.signatureUrl,
+      showStamp: documentSetting.showStamp,
+      stampUrl: documentSetting.stampUrl,
+      signatureText: documentSetting.signatureText,
+    },
+    createdBy: payroll.createdBy,
+  };
+};
+
+const generatePayrollSlipPdf = async (payrollId) => {
+  const slipPreview = await getPayrollSlipPreview(payrollId);
+
+  if (!slipPreview.salary.isCalculationMatched) {
+    const error = new Error("Payroll calculation mismatch");
+    error.status = 400;
+    throw error;
+  }
+
+  const pdfBuffer = await generatePayrollSlipPdfBuffer(slipPreview);
+
+  return {
+    pdfBuffer,
+    fileName: `${slipPreview.slip.slipNumber}.pdf`,
+  };
+};
+
 module.exports = {
   getAllPayrolls,
   getPayrollById,
   getPayrollSummary,
   createPayroll,
+  getPayrollSlipPreview,
+  generatePayrollSlipPdf,
 };
