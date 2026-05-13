@@ -21,6 +21,9 @@ const {
 const {
   generateCashFlowReportPdfBuffer,
 } = require("./report.cash-flow-pdf");
+const {
+  generateBalanceSheetReportPdfBuffer,
+} = require("./report.balance-sheet-pdf");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -3488,6 +3491,337 @@ const exportCashFlowReportPdf = async ({ startDate, endDate } = {}) => {
   };
 };
 
+const getBalanceSheetPeriodLabel = ({ endDate } = {}) => {
+  if (endDate) {
+    return `Sampai ${endDate}`;
+  }
+
+  return "Sampai Hari Ini";
+};
+
+const exportBalanceSheetReportExcel = async ({ endDate } = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+  const report = await getBalanceSheetReport({ endDate });
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Neraca");
+
+  worksheet.mergeCells("A1:F1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:F2");
+  worksheet.getCell("A2").value = "LAPORAN NERACA";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:F3");
+  worksheet.getCell("A3").value = `Periode: ${getBalanceSheetPeriodLabel({
+    endDate,
+  })}`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  const balanceSheetColumns = [
+    {
+      label: "Kategori",
+      key: "category",
+      width: 20,
+    },
+    {
+      label: "Kode Akun",
+      key: "accountCode",
+      width: 14,
+    },
+    {
+      label: "Nama Akun",
+      key: "accountName",
+      width: 32,
+    },
+    {
+      label: "Debit",
+      key: "debit",
+      width: 16,
+    },
+    {
+      label: "Kredit",
+      key: "credit",
+      width: 16,
+    },
+    {
+      label: "Saldo",
+      key: "balance",
+      width: 18,
+    },
+  ];
+
+  worksheet.columns = balanceSheetColumns.map((column) => ({
+    key: column.key,
+    width: column.width,
+  }));
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = balanceSheetColumns.map((column) => column.label);
+  headerRow.height = 22;
+
+  balanceSheetColumns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF1F4E78",
+      },
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  const addSectionRow = (label) => {
+    const row = worksheet.addRow({
+      category: label,
+      accountCode: "",
+      accountName: "",
+      debit: "",
+      credit: "",
+      balance: "",
+    });
+
+    row.font = {
+      bold: true,
+    };
+
+    row.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FFD9EAF7",
+      },
+    };
+
+    return row;
+  };
+
+  const addAccountRows = (categoryLabel, accounts) => {
+    addSectionRow(categoryLabel);
+
+    if (accounts.length === 0) {
+      worksheet.addRow({
+        category: categoryLabel,
+        accountCode: "-",
+        accountName: "Tidak ada data",
+        debit: 0,
+        credit: 0,
+        balance: 0,
+      });
+
+      return;
+    }
+
+    accounts.forEach((account) => {
+      worksheet.addRow({
+        category: categoryLabel,
+        accountCode: account.accountCode,
+        accountName: account.accountName,
+        debit: account.debit,
+        credit: account.credit,
+        balance: account.balance,
+      });
+    });
+  };
+
+  addAccountRows("Aset", report.assets);
+  addAccountRows("Kewajiban", report.liabilities);
+  addAccountRows("Ekuitas", report.equities);
+
+  worksheet.addRow({
+    category: "Ekuitas",
+    accountCode: "-",
+    accountName: "Laba/Rugi Periode Berjalan",
+    debit: "",
+    credit: "",
+    balance: report.summary.currentPeriodProfit,
+  });
+
+  worksheet.addRow([]);
+
+  const summaryRows = [
+    {
+      label: "Total Aset",
+      value: report.summary.totalAssets,
+    },
+    {
+      label: "Total Kewajiban",
+      value: report.summary.totalLiabilities,
+    },
+    {
+      label: "Total Ekuitas Akun",
+      value: report.summary.totalEquityAccounts,
+    },
+    {
+      label: "Laba/Rugi Periode Berjalan",
+      value: report.summary.currentPeriodProfit,
+    },
+    {
+      label: "Total Ekuitas",
+      value: report.summary.totalEquity,
+    },
+    {
+      label: "Total Kewajiban + Ekuitas",
+      value: report.summary.totalLiabilitiesAndEquity,
+    },
+    {
+      label: "Selisih Neraca",
+      value: report.summary.balanceDifference,
+      bold: true,
+    },
+  ];
+
+  summaryRows.forEach((item) => {
+    const row = worksheet.addRow({
+      category: "",
+      accountCode: "",
+      accountName: item.label,
+      debit: "",
+      credit: "",
+      balance: item.value,
+    });
+
+    if (item.bold) {
+      row.font = {
+        bold: true,
+      };
+
+      row.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor:
+          item.value === 0
+            ? {
+                argb: "FFE2F0D9",
+              }
+            : {
+                argb: "FFFFC7CE",
+              },
+      };
+    }
+  });
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = ["D", "E", "F"];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "F5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-neraca-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
+const exportBalanceSheetReportPdf = async ({ endDate } = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+  const report = await getBalanceSheetReport({ endDate });
+
+  const buffer = await generateBalanceSheetReportPdfBuffer({
+    storeProfile,
+    report,
+    periodLabel: getBalanceSheetPeriodLabel({
+      endDate,
+    }),
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-neraca-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -3511,4 +3845,6 @@ module.exports = {
   exportProfitLossReportPdf,
   exportCashFlowReportExcel,
   exportCashFlowReportPdf,
+  exportBalanceSheetReportExcel,
+  exportBalanceSheetReportPdf,
 };

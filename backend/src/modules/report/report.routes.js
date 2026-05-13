@@ -148,6 +148,20 @@ router.get(
 );
 
 router.get(
+  "/balance-sheet/export-excel",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportBalanceSheetReportExcel
+);
+
+router.get(
+  "/balance-sheet/export-pdf",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportBalanceSheetReportPdf
+);
+
+router.get(
   "/balance-sheet",
   authenticate,
   authorizeRoles("OWNER"),
