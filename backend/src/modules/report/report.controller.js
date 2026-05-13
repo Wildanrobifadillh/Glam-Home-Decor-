@@ -260,6 +260,28 @@ const exportPurchaseReportPdf = async (req, res, next) => {
   }
 };
 
+const exportStockReportExcel = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportStockReportExcel({
+      categoryId: req.query.categoryId,
+      status: req.query.status,
+      stockStatus: req.query.stockStatus,
+      search: req.query.search,
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -275,4 +297,5 @@ module.exports = {
   exportSalesReportPdf,
   exportPurchaseReportExcel,
   exportPurchaseReportPdf,
+  exportStockReportExcel,
 };

@@ -1787,6 +1787,379 @@ const exportPurchaseReportPdf = async ({
   };
 };
 
+const buildStockExportWhere = ({ categoryId, status, search } = {}) => {
+  const where = {};
+
+  if (categoryId) {
+    where.categoryId = categoryId;
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (search) {
+    where.OR = [
+      {
+        supplierCode: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        searchCode: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        category: {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+    ];
+  }
+
+  return where;
+};
+
+const getStockStatus = (product) => {
+  if (product.stock <= 0) {
+    return "HABIS";
+  }
+
+  if (product.stock <= product.minStock) {
+    return "STOK MENIPIS";
+  }
+
+  return "AMAN";
+};
+
+const filterProductsByStockStatus = (products, stockStatus) => {
+  if (!stockStatus) {
+    return products;
+  }
+
+  return products.filter((product) => {
+    const currentStockStatus = getStockStatus(product);
+
+    if (stockStatus === "OUT_OF_STOCK") {
+      return currentStockStatus === "HABIS";
+    }
+
+    if (stockStatus === "LOW_STOCK") {
+      return currentStockStatus === "STOK MENIPIS";
+    }
+
+    if (stockStatus === "SAFE") {
+      return currentStockStatus === "AMAN";
+    }
+
+    return true;
+  });
+};
+
+const exportStockReportExcel = async ({
+  categoryId,
+  status,
+  stockStatus,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const productsData = await prisma.product.findMany({
+    where: buildStockExportWhere({
+      categoryId,
+      status,
+      search,
+    }),
+    include: {
+      category: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  const products = filterProductsByStockStatus(productsData, stockStatus);
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Stok");
+
+  worksheet.mergeCells("A1:M1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:M2");
+  worksheet.getCell("A2").value = "LAPORAN STOK BARANG";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:M3");
+  worksheet.getCell("A3").value = `Filter: ${
+    stockStatus || status || categoryId || search ? "Sesuai parameter" : "Semua Barang"
+  }`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  const stockReportColumns = [
+    {
+      label: "No",
+      key: "no",
+      width: 6,
+    },
+    {
+      label: "Kode Supplier",
+      key: "supplierCode",
+      width: 18,
+    },
+    {
+      label: "Kode Cari",
+      key: "searchCode",
+      width: 16,
+    },
+    {
+      label: "Nama Barang",
+      key: "name",
+      width: 28,
+    },
+    {
+      label: "Kategori",
+      key: "categoryName",
+      width: 18,
+    },
+    {
+      label: "Unit",
+      key: "unit",
+      width: 12,
+    },
+    {
+      label: "Stok",
+      key: "stock",
+      width: 10,
+    },
+    {
+      label: "Min Stok",
+      key: "minStock",
+      width: 12,
+    },
+    {
+      label: "Status Stok",
+      key: "stockStatus",
+      width: 16,
+    },
+    {
+      label: "Harga Beli",
+      key: "purchasePrice",
+      width: 16,
+    },
+    {
+      label: "Harga Jual",
+      key: "sellingPrice",
+      width: 16,
+    },
+    {
+      label: "Nilai Stok",
+      key: "stockValue",
+      width: 18,
+    },
+    {
+      label: "Status Barang",
+      key: "status",
+      width: 16,
+    },
+  ];
+
+  worksheet.columns = stockReportColumns.map((column) => ({
+    key: column.key,
+    width: column.width,
+  }));
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = stockReportColumns.map((column) => column.label);
+  headerRow.height = 22;
+
+  stockReportColumns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF1F4E78",
+      },
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  let totalStock = 0;
+  let totalStockValue = 0;
+  let safeStockCount = 0;
+  let lowStockCount = 0;
+  let outOfStockCount = 0;
+
+  products.forEach((product, index) => {
+    const currentStockStatus = getStockStatus(product);
+    const stockValue = product.stock * product.purchasePrice;
+
+    totalStock += product.stock;
+    totalStockValue += stockValue;
+
+    if (currentStockStatus === "AMAN") {
+      safeStockCount += 1;
+    }
+
+    if (currentStockStatus === "STOK MENIPIS") {
+      lowStockCount += 1;
+    }
+
+    if (currentStockStatus === "HABIS") {
+      outOfStockCount += 1;
+    }
+
+    worksheet.addRow({
+      no: index + 1,
+      supplierCode: product.supplierCode,
+      searchCode: product.searchCode,
+      name: product.name,
+      categoryName: product.category ? product.category.name : "-",
+      unit: product.unit,
+      stock: product.stock,
+      minStock: product.minStock,
+      stockStatus: currentStockStatus,
+      purchasePrice: product.purchasePrice,
+      sellingPrice: product.sellingPrice,
+      stockValue,
+      status: product.status,
+    });
+  });
+
+  const totalRow = worksheet.addRow({
+    no: "",
+    supplierCode: "",
+    searchCode: "",
+    name: "",
+    categoryName: "",
+    unit: "TOTAL",
+    stock: totalStock,
+    minStock: "",
+    stockStatus: `AMAN: ${safeStockCount}, MENIPIS: ${lowStockCount}, HABIS: ${outOfStockCount}`,
+    purchasePrice: "",
+    sellingPrice: "",
+    stockValue: totalStockValue,
+    status: "",
+  });
+
+  totalRow.font = {
+    bold: true,
+  };
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = ["J", "K", "L"];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "M5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-stok-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -1801,5 +2174,6 @@ module.exports = {
   exportSalesReportExcel,
   exportSalesReportPdf,
   exportPurchaseReportExcel,
-  exportPurchaseReportPdf
+  exportPurchaseReportPdf,
+  exportStockReportExcel,
 };
