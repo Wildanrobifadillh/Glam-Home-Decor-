@@ -239,6 +239,27 @@ const exportPurchaseReportExcel = async (req, res, next) => {
   }
 };
 
+const exportPurchaseReportPdf = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportPurchaseReportPdf({
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      paymentStatus: req.query.paymentStatus,
+      paymentMethod: req.query.paymentMethod,
+      status: req.query.status,
+      search: req.query.search,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -253,4 +274,5 @@ module.exports = {
   exportSalesReportExcel,
   exportSalesReportPdf,
   exportPurchaseReportExcel,
+  exportPurchaseReportPdf,
 };

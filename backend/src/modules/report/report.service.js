@@ -6,6 +6,9 @@ const settingsService = require("../settings/settings.service");
 const {
   generateSalesReportPdfBuffer,
 } = require("./report.sales-pdf");
+const {
+  generatePurchaseReportPdfBuffer,
+} = require("./report.purchases-pdf");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -1712,6 +1715,78 @@ const exportPurchaseReportExcel = async ({
   };
 };
 
+const exportPurchaseReportPdf = async ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const purchases = await prisma.purchase.findMany({
+    where: buildPurchaseExportWhere({
+      startDate,
+      endDate,
+      paymentStatus,
+      paymentMethod,
+      status,
+      search,
+    }),
+    include: {
+      supplier: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const summary = {
+    purchaseCount: purchases.length,
+    totalAmount: 0,
+    totalPaidAmount: 0,
+    totalRemainingAmount: 0,
+  };
+
+  for (const purchase of purchases) {
+    summary.totalAmount += purchase.totalAmount;
+    summary.totalPaidAmount += purchase.paidAmount;
+    summary.totalRemainingAmount += purchase.remainingAmount;
+  }
+
+  const periodLabel = getReportPeriodLabel({
+    startDate,
+    endDate,
+  });
+
+  const buffer = await generatePurchaseReportPdfBuffer({
+    storeProfile,
+    purchases,
+    summary,
+    periodLabel,
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-pembelian-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -1726,4 +1801,5 @@ module.exports = {
   exportSalesReportExcel,
   exportSalesReportPdf,
   exportPurchaseReportExcel,
+  exportPurchaseReportPdf
 };
