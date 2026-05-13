@@ -9,6 +9,9 @@ const {
 const {
   generatePurchaseReportPdfBuffer,
 } = require("./report.purchases-pdf");
+const {
+  generateStockReportPdfBuffer,
+} = require("./report.stock-pdf");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -2160,6 +2163,117 @@ const exportStockReportExcel = async ({
   };
 };
 
+const getStockFilterLabel = ({ categoryId, status, stockStatus, search } = {}) => {
+  const filters = [];
+
+  if (categoryId) {
+    filters.push("Kategori tertentu");
+  }
+
+  if (status) {
+    filters.push(`Status barang ${status}`);
+  }
+
+  if (stockStatus) {
+    filters.push(`Status stok ${stockStatus}`);
+  }
+
+  if (search) {
+    filters.push(`Pencarian "${search}"`);
+  }
+
+  return filters.length > 0 ? filters.join(", ") : "Semua Barang";
+};
+
+const exportStockReportPdf = async ({
+  categoryId,
+  status,
+  stockStatus,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const productsData = await prisma.product.findMany({
+    where: buildStockExportWhere({
+      categoryId,
+      status,
+      search,
+    }),
+    include: {
+      category: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  const filteredProducts = filterProductsByStockStatus(productsData, stockStatus);
+
+  const products = filteredProducts.map((product) => {
+    const stockStatusLabel = getStockStatus(product);
+    const stockValue = product.stock * product.purchasePrice;
+
+    return {
+      id: product.id,
+      supplierCode: product.supplierCode,
+      searchCode: product.searchCode,
+      name: product.name,
+      categoryName: product.category ? product.category.name : "-",
+      unit: product.unit,
+      stock: product.stock,
+      minStock: product.minStock,
+      stockStatus: stockStatusLabel,
+      purchasePrice: product.purchasePrice,
+      sellingPrice: product.sellingPrice,
+      stockValue,
+      status: product.status,
+    };
+  });
+
+  const summary = {
+    productCount: products.length,
+    totalStock: 0,
+    totalStockValue: 0,
+    safeStockCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+  };
+
+  products.forEach((product) => {
+    summary.totalStock += product.stock;
+    summary.totalStockValue += product.stockValue;
+
+    if (product.stockStatus === "AMAN") {
+      summary.safeStockCount += 1;
+    }
+
+    if (product.stockStatus === "STOK MENIPIS") {
+      summary.lowStockCount += 1;
+    }
+
+    if (product.stockStatus === "HABIS") {
+      summary.outOfStockCount += 1;
+    }
+  });
+
+  const buffer = await generateStockReportPdfBuffer({
+    storeProfile,
+    products,
+    summary,
+    filterLabel: getStockFilterLabel({
+      categoryId,
+      status,
+      stockStatus,
+      search,
+    }),
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-stok-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -2176,4 +2290,5 @@ module.exports = {
   exportPurchaseReportExcel,
   exportPurchaseReportPdf,
   exportStockReportExcel,
+  exportStockReportPdf,
 };

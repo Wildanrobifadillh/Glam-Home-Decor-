@@ -49,6 +49,13 @@ router.get(
 );
 
 router.get(
+  "/stocks/export-pdf",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF", "STAFF_GUDANG"),
+  reportController.exportStockReportPdf
+);
+
+router.get(
   "/purchases",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),
