@@ -56,6 +56,20 @@ router.get(
 );
 
 router.get(
+  "/payrolls/export-excel",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  reportController.exportPayrollReportExcel
+);
+
+router.get(
+  "/payrolls/export-pdf",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  reportController.exportPayrollReportPdf
+);
+
+router.get(
   "/purchases",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),

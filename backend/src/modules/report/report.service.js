@@ -12,6 +12,9 @@ const {
 const {
   generateStockReportPdfBuffer,
 } = require("./report.stock-pdf");
+const {
+  generatePayrollReportPdfBuffer,
+} = require("./report.payroll-pdf");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -2274,6 +2277,557 @@ const exportStockReportPdf = async ({
   };
 };
 
+const getMonthName = (month) => {
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
+  return monthNames[month - 1] || "-";
+};
+
+const getPayrollPeriodLabel = (payroll) => {
+  return `${getMonthName(payroll.periodMonth)} ${payroll.periodYear}`;
+};
+
+const buildPayrollExportWhere = ({
+  employeeId,
+  periodMonth,
+  periodYear,
+  paymentMethod,
+  status,
+  startDate,
+  endDate,
+  search,
+} = {}) => {
+  const where = {};
+
+  if (employeeId) {
+    where.employeeId = employeeId;
+  }
+
+  if (periodMonth) {
+    where.periodMonth = Number(periodMonth);
+  }
+
+  if (periodYear) {
+    where.periodYear = Number(periodYear);
+  }
+
+  if (paymentMethod) {
+    where.paymentMethod = paymentMethod;
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (startDate || endDate) {
+    where.paidAt = {};
+
+    if (startDate) {
+      where.paidAt.gte = new Date(startDate);
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      where.paidAt.lte = end;
+    }
+  }
+
+  if (search) {
+    where.OR = [
+      {
+        payrollNumber: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        note: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        employee: {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        employee: {
+          position: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        employee: {
+          phone: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+    ];
+  }
+
+  return where;
+};
+
+const exportPayrollReportExcel = async ({
+  employeeId,
+  periodMonth,
+  periodYear,
+  paymentMethod,
+  status,
+  startDate,
+  endDate,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const payrolls = await prisma.payroll.findMany({
+    where: buildPayrollExportWhere({
+      employeeId,
+      periodMonth,
+      periodYear,
+      paymentMethod,
+      status,
+      startDate,
+      endDate,
+      search,
+    }),
+    include: {
+      employee: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+    },
+    orderBy: {
+      paidAt: "desc",
+    },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Payroll");
+
+  worksheet.mergeCells("A1:P1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:P2");
+  worksheet.getCell("A2").value = "LAPORAN PAYROLL";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:P3");
+  worksheet.getCell("A3").value = `Periode: ${getReportPeriodLabel({
+    startDate,
+    endDate,
+  })}`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  const payrollReportColumns = [
+    {
+      label: "No",
+      key: "no",
+      width: 6,
+    },
+    {
+      label: "Tanggal Bayar",
+      key: "paidAt",
+      width: 16,
+    },
+    {
+      label: "No Payroll",
+      key: "payrollNumber",
+      width: 26,
+    },
+    {
+      label: "Periode",
+      key: "periodLabel",
+      width: 16,
+    },
+    {
+      label: "Nama Karyawan",
+      key: "employeeName",
+      width: 24,
+    },
+    {
+      label: "Jabatan",
+      key: "position",
+      width: 22,
+    },
+    {
+      label: "Gaji Pokok",
+      key: "baseSalary",
+      width: 16,
+    },
+    {
+      label: "Tunjangan",
+      key: "allowance",
+      width: 16,
+    },
+    {
+      label: "Bonus",
+      key: "bonus",
+      width: 16,
+    },
+    {
+      label: "Potongan",
+      key: "deduction",
+      width: 16,
+    },
+    {
+      label: "Gaji Kotor",
+      key: "grossSalary",
+      width: 16,
+    },
+    {
+      label: "Gaji Bersih",
+      key: "netSalary",
+      width: 16,
+    },
+    {
+      label: "Metode Bayar",
+      key: "paymentMethod",
+      width: 16,
+    },
+    {
+      label: "Kas/Bank",
+      key: "cashBankAccountName",
+      width: 24,
+    },
+    {
+      label: "Dibuat Oleh",
+      key: "createdByName",
+      width: 20,
+    },
+    {
+      label: "Catatan",
+      key: "note",
+      width: 22,
+    },
+  ];
+
+  worksheet.columns = payrollReportColumns.map((column) => ({
+    key: column.key,
+    width: column.width,
+  }));
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = payrollReportColumns.map((column) => column.label);
+  headerRow.height = 22;
+
+  payrollReportColumns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF1F4E78",
+      },
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  let totalBaseSalary = 0;
+  let totalAllowance = 0;
+  let totalBonus = 0;
+  let totalDeduction = 0;
+  let totalGrossSalary = 0;
+  let totalNetSalary = 0;
+
+  payrolls.forEach((payroll, index) => {
+    totalBaseSalary += payroll.baseSalary;
+    totalAllowance += payroll.allowance;
+    totalBonus += payroll.bonus;
+    totalDeduction += payroll.deduction;
+    totalGrossSalary += payroll.grossSalary;
+    totalNetSalary += payroll.netSalary;
+
+    worksheet.addRow({
+      no: index + 1,
+      paidAt: formatDateForExcelCell(payroll.paidAt),
+      payrollNumber: payroll.payrollNumber,
+      periodLabel: getPayrollPeriodLabel(payroll),
+      employeeName: payroll.employee ? payroll.employee.name : "-",
+      position: payroll.employee ? payroll.employee.position : "-",
+      baseSalary: payroll.baseSalary,
+      allowance: payroll.allowance,
+      bonus: payroll.bonus,
+      deduction: payroll.deduction,
+      grossSalary: payroll.grossSalary,
+      netSalary: payroll.netSalary,
+      paymentMethod: payroll.paymentMethod,
+      cashBankAccountName: payroll.cashBankAccount
+        ? payroll.cashBankAccount.name
+        : "-",
+      createdByName: payroll.createdBy ? payroll.createdBy.name : "-",
+      note: payroll.note || "-",
+    });
+  });
+
+  const totalRow = worksheet.addRow({
+    no: "",
+    paidAt: "",
+    payrollNumber: "",
+    periodLabel: "",
+    employeeName: "",
+    position: "TOTAL",
+    baseSalary: totalBaseSalary,
+    allowance: totalAllowance,
+    bonus: totalBonus,
+    deduction: totalDeduction,
+    grossSalary: totalGrossSalary,
+    netSalary: totalNetSalary,
+    paymentMethod: "",
+    cashBankAccountName: "",
+    createdByName: "",
+    note: "",
+  });
+
+  totalRow.font = {
+    bold: true,
+  };
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = ["G", "H", "I", "J", "K", "L"];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.getColumn("B").numFmt = "dd mmmm yyyy";
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "P5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-payroll-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
+const getPayrollReportPeriodLabel = ({
+  periodMonth,
+  periodYear,
+  startDate,
+  endDate,
+} = {}) => {
+  if (periodMonth && periodYear) {
+    return `${getMonthName(Number(periodMonth))} ${periodYear}`;
+  }
+
+  if (periodYear) {
+    return `Tahun ${periodYear}`;
+  }
+
+  return getReportPeriodLabel({
+    startDate,
+    endDate,
+  });
+};
+
+const exportPayrollReportPdf = async ({
+  employeeId,
+  periodMonth,
+  periodYear,
+  paymentMethod,
+  status,
+  startDate,
+  endDate,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const payrollData = await prisma.payroll.findMany({
+    where: buildPayrollExportWhere({
+      employeeId,
+      periodMonth,
+      periodYear,
+      paymentMethod,
+      status,
+      startDate,
+      endDate,
+      search,
+    }),
+    include: {
+      employee: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+    },
+    orderBy: {
+      paidAt: "desc",
+    },
+  });
+
+  const summary = {
+    payrollCount: payrollData.length,
+    totalBaseSalary: 0,
+    totalAllowance: 0,
+    totalBonus: 0,
+    totalDeduction: 0,
+    totalGrossSalary: 0,
+    totalNetSalary: 0,
+  };
+
+  const payrolls = payrollData.map((payroll) => {
+    summary.totalBaseSalary += payroll.baseSalary;
+    summary.totalAllowance += payroll.allowance;
+    summary.totalBonus += payroll.bonus;
+    summary.totalDeduction += payroll.deduction;
+    summary.totalGrossSalary += payroll.grossSalary;
+    summary.totalNetSalary += payroll.netSalary;
+
+    return {
+      id: payroll.id,
+      payrollNumber: payroll.payrollNumber,
+      paidAt: payroll.paidAt,
+      periodLabel: getPayrollPeriodLabel(payroll),
+      employeeName: payroll.employee ? payroll.employee.name : "-",
+      position: payroll.employee ? payroll.employee.position : "-",
+      baseSalary: payroll.baseSalary,
+      allowance: payroll.allowance,
+      bonus: payroll.bonus,
+      deduction: payroll.deduction,
+      grossSalary: payroll.grossSalary,
+      netSalary: payroll.netSalary,
+      paymentMethod: payroll.paymentMethod,
+      status: payroll.status,
+    };
+  });
+
+  const buffer = await generatePayrollReportPdfBuffer({
+    storeProfile,
+    payrolls,
+    summary,
+    periodLabel: getPayrollReportPeriodLabel({
+      periodMonth,
+      periodYear,
+      startDate,
+      endDate,
+    }),
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-payroll-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -2291,4 +2845,6 @@ module.exports = {
   exportPurchaseReportPdf,
   exportStockReportExcel,
   exportStockReportPdf,
+  exportPayrollReportExcel,
+  exportPayrollReportPdf,
 };

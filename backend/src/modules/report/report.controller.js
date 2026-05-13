@@ -301,6 +301,55 @@ const exportStockReportPdf = async (req, res, next) => {
   }
 };
 
+const exportPayrollReportExcel = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportPayrollReportExcel({
+      employeeId: req.query.employeeId,
+      periodMonth: req.query.periodMonth,
+      periodYear: req.query.periodYear,
+      paymentMethod: req.query.paymentMethod,
+      status: req.query.status,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      search: req.query.search,
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const exportPayrollReportPdf = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportPayrollReportPdf({
+      employeeId: req.query.employeeId,
+      periodMonth: req.query.periodMonth,
+      periodYear: req.query.periodYear,
+      paymentMethod: req.query.paymentMethod,
+      status: req.query.status,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      search: req.query.search,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -318,4 +367,6 @@ module.exports = {
   exportPurchaseReportPdf,
   exportStockReportExcel,
   exportStockReportPdf,
+  exportPayrollReportExcel,
+  exportPayrollReportPdf,
 };
