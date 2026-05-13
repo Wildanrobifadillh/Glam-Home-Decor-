@@ -3,6 +3,10 @@ const ExcelJS = require("exceljs");
 const prisma = require("../../config/prisma");
 const settingsService = require("../settings/settings.service");
 
+const {
+  generateSalesReportPdfBuffer,
+} = require("./report.sales-pdf");
+
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
 
@@ -1273,6 +1277,79 @@ salesReportColumns.forEach((column, index) => {
   };
 };
 
+const exportSalesReportPdf = async ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const sales = await prisma.sale.findMany({
+    where: buildSalesExportWhere({
+      startDate,
+      endDate,
+      paymentStatus,
+      paymentMethod,
+      status,
+      search,
+    }),
+    include: {
+      customer: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: true,
+        },
+      },
+      additionalCosts: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const summary = {
+    saleCount: sales.length,
+    totalAmount: 0,
+    totalPaidAmount: 0,
+    totalRemainingAmount: 0,
+  };
+
+  for (const sale of sales) {
+    summary.totalAmount += sale.totalAmount;
+    summary.totalPaidAmount += sale.paidAmount;
+    summary.totalRemainingAmount += sale.remainingAmount;
+  }
+
+  const periodLabel = getReportPeriodLabel({
+    startDate,
+    endDate,
+  });
+
+  const buffer = await generateSalesReportPdfBuffer({
+    storeProfile,
+    sales,
+    summary,
+    periodLabel,
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-penjualan-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -1285,4 +1362,5 @@ module.exports = {
   getBalanceSheetReport,
   getOwnerSummary,
   exportSalesReportExcel,
+  exportSalesReportPdf,
 };
