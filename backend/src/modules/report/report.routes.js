@@ -28,6 +28,13 @@ router.get(
 );
 
 router.get(
+  "/purchases/export-excel",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  reportController.exportPurchaseReportExcel
+);
+
+router.get(
   "/purchases",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),

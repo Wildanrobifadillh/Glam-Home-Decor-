@@ -148,6 +148,63 @@ const buildSalesExportWhere = ({
   return where;
 };
 
+const buildPurchaseExportWhere = ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const where = {
+    status: status || "COMPLETED",
+    ...buildTransactionDateWhere({ startDate, endDate }),
+  };
+
+  if (paymentStatus) {
+    where.paymentStatus = paymentStatus;
+  }
+
+  if (paymentMethod) {
+    where.paymentMethod = paymentMethod;
+  }
+
+  if (search) {
+    where.OR = [
+      {
+        purchaseNumber: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        supplier: {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        supplier: {
+          phone: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      },
+      {
+        note: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+    ];
+  }
+
+  return where;
+};
+
 const getSaleItemSubtotalAmount = (sale) => {
   return sale.items.reduce((total, item) => total + item.subtotal, 0);
 };
@@ -1350,6 +1407,311 @@ const exportSalesReportPdf = async ({
   };
 };
 
+const exportPurchaseReportExcel = async ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+
+  const purchases = await prisma.purchase.findMany({
+    where: buildPurchaseExportWhere({
+      startDate,
+      endDate,
+      paymentStatus,
+      paymentMethod,
+      status,
+      search,
+    }),
+    include: {
+      supplier: true,
+      cashBankAccount: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Pembelian");
+
+  worksheet.mergeCells("A1:N1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:N2");
+  worksheet.getCell("A2").value = "LAPORAN PEMBELIAN";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:N3");
+  worksheet.getCell("A3").value = `Periode: ${getReportPeriodLabel({
+    startDate,
+    endDate,
+  })}`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  const purchaseReportColumns = [
+    {
+      label: "No",
+      key: "no",
+      width: 6,
+    },
+    {
+      label: "Tanggal",
+      key: "createdAt",
+      width: 16,
+    },
+    {
+      label: "No Pembelian",
+      key: "purchaseNumber",
+      width: 26,
+    },
+    {
+      label: "Supplier",
+      key: "supplierName",
+      width: 24,
+    },
+    {
+      label: "No HP Supplier",
+      key: "supplierPhone",
+      width: 18,
+    },
+    {
+      label: "Status Pembelian",
+      key: "status",
+      width: 18,
+    },
+    {
+      label: "Status Pembayaran",
+      key: "paymentStatus",
+      width: 20,
+    },
+    {
+      label: "Metode Bayar",
+      key: "paymentMethod",
+      width: 16,
+    },
+    {
+      label: "Total",
+      key: "totalAmount",
+      width: 16,
+    },
+    {
+      label: "Dibayar",
+      key: "paidAmount",
+      width: 16,
+    },
+    {
+      label: "Sisa",
+      key: "remainingAmount",
+      width: 16,
+    },
+    {
+      label: "Kas/Bank",
+      key: "cashBankAccountName",
+      width: 24,
+    },
+    {
+      label: "Dibuat Oleh",
+      key: "createdByName",
+      width: 20,
+    },
+    {
+      label: "Catatan",
+      key: "note",
+      width: 22,
+    },
+  ];
+
+  worksheet.columns = purchaseReportColumns.map((column) => ({
+    key: column.key,
+    width: column.width,
+  }));
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = purchaseReportColumns.map((column) => column.label);
+  headerRow.height = 22;
+
+  purchaseReportColumns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF1F4E78",
+      },
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  let totalAmount = 0;
+  let totalPaidAmount = 0;
+  let totalRemainingAmount = 0;
+
+  purchases.forEach((purchase, index) => {
+    totalAmount += purchase.totalAmount;
+    totalPaidAmount += purchase.paidAmount;
+    totalRemainingAmount += purchase.remainingAmount;
+
+    worksheet.addRow({
+      no: index + 1,
+      createdAt: formatDateForExcelCell(purchase.createdAt),
+      purchaseNumber: purchase.purchaseNumber,
+      supplierName: purchase.supplier ? purchase.supplier.name : "-",
+      supplierPhone: purchase.supplier ? purchase.supplier.phone || "-" : "-",
+      status: purchase.status,
+      paymentStatus: purchase.paymentStatus,
+      paymentMethod: purchase.paymentMethod,
+      totalAmount: purchase.totalAmount,
+      paidAmount: purchase.paidAmount,
+      remainingAmount: purchase.remainingAmount,
+      cashBankAccountName: purchase.cashBankAccount
+        ? purchase.cashBankAccount.name
+        : "-",
+      createdByName: purchase.createdBy ? purchase.createdBy.name : "-",
+      note: purchase.note || "-",
+    });
+  });
+
+  const totalRow = worksheet.addRow({
+    no: "",
+    createdAt: "",
+    purchaseNumber: "",
+    supplierName: "",
+    supplierPhone: "",
+    status: "",
+    paymentStatus: "",
+    paymentMethod: "TOTAL",
+    totalAmount,
+    paidAmount: totalPaidAmount,
+    remainingAmount: totalRemainingAmount,
+    cashBankAccountName: "",
+    createdByName: "",
+    note: "",
+  });
+
+  totalRow.font = {
+    bold: true,
+  };
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = ["I", "J", "K"];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.getColumn("B").numFmt = "dd mmmm yyyy";
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "N5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-pembelian-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -1363,4 +1725,5 @@ module.exports = {
   getOwnerSummary,
   exportSalesReportExcel,
   exportSalesReportPdf,
+  exportPurchaseReportExcel,
 };
