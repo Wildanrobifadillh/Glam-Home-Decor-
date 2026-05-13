@@ -350,6 +350,44 @@ const exportPayrollReportPdf = async (req, res, next) => {
   }
 };
 
+const exportProfitLossReportExcel = async (req, res, next) => {
+  try {
+    const { buffer, fileName } =
+      await reportService.exportProfitLossReportExcel({
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const exportProfitLossReportPdf = async (req, res, next) => {
+  try {
+    const { buffer, fileName } = await reportService.exportProfitLossReportPdf({
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -369,4 +407,6 @@ module.exports = {
   exportStockReportPdf,
   exportPayrollReportExcel,
   exportPayrollReportPdf,
+  exportProfitLossReportExcel,
+  exportProfitLossReportPdf,
 };

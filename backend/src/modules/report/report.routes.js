@@ -69,6 +69,7 @@ router.get(
   reportController.exportPayrollReportPdf
 );
 
+
 router.get(
   "/purchases",
   authenticate,
@@ -102,6 +103,20 @@ router.get(
   authenticate,
   authorizeRoles("OWNER"),
   reportController.getGeneralLedger
+);
+
+router.get(
+  "/profit-loss/export-excel",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportProfitLossReportExcel
+);
+
+router.get(
+  "/profit-loss/export-pdf",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportProfitLossReportPdf
 );
 
 router.get(
