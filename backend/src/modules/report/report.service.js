@@ -18,6 +18,9 @@ const {
 const {
   generateProfitLossReportPdfBuffer,
 } = require("./report.profit-loss-pdf");
+const {
+  generateCashFlowReportPdfBuffer,
+} = require("./report.cash-flow-pdf");
 
 const buildDateRange = ({ startDate, endDate } = {}) => {
   const range = {};
@@ -3134,6 +3137,357 @@ const exportProfitLossReportPdf = async ({ startDate, endDate } = {}) => {
   };
 };
 
+const exportCashFlowReportExcel = async ({ startDate, endDate } = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+  const report = await getCashFlowReport({ startDate, endDate });
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Laporan Arus Kas");
+
+  worksheet.mergeCells("A1:K1");
+  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").font = {
+    bold: true,
+    size: 16,
+  };
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A2:K2");
+  worksheet.getCell("A2").value = "LAPORAN ARUS KAS";
+  worksheet.getCell("A2").font = {
+    bold: true,
+    size: 14,
+  };
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.mergeCells("A3:K3");
+  worksheet.getCell("A3").value = `Periode: ${getReportPeriodLabel({
+    startDate,
+    endDate,
+  })}`;
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center",
+  };
+
+  worksheet.addRow([]);
+
+  const cashFlowColumns = [
+    {
+      label: "No",
+      key: "no",
+      width: 6,
+    },
+    {
+      label: "Tanggal",
+      key: "entryDate",
+      width: 16,
+    },
+    {
+      label: "No Jurnal",
+      key: "entryNumber",
+      width: 26,
+    },
+    {
+      label: "Sumber",
+      key: "sourceType",
+      width: 18,
+    },
+    {
+      label: "Deskripsi",
+      key: "description",
+      width: 32,
+    },
+    {
+      label: "Kode Akun",
+      key: "accountCode",
+      width: 14,
+    },
+    {
+      label: "Nama Akun",
+      key: "accountName",
+      width: 26,
+    },
+    {
+      label: "Kas Masuk",
+      key: "inflow",
+      width: 16,
+    },
+    {
+      label: "Kas Keluar",
+      key: "outflow",
+      width: 16,
+    },
+    {
+      label: "Perubahan Bersih",
+      key: "netChange",
+      width: 18,
+    },
+    {
+      label: "Catatan",
+      key: "note",
+      width: 28,
+    },
+  ];
+
+  worksheet.columns = cashFlowColumns.map((column) => ({
+    key: column.key,
+    width: column.width,
+  }));
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = cashFlowColumns.map((column) => column.label);
+  headerRow.height = 22;
+
+  cashFlowColumns.forEach((column, index) => {
+    const cell = headerRow.getCell(index + 1);
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF1F4E78",
+      },
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    };
+  });
+
+  report.movements.forEach((movement, index) => {
+    worksheet.addRow({
+      no: index + 1,
+      entryDate: formatDateForExcelCell(movement.entryDate),
+      entryNumber: movement.entryNumber,
+      sourceType: movement.sourceType,
+      description: movement.description,
+      accountCode: movement.accountCode,
+      accountName: movement.accountName,
+      inflow: movement.inflow,
+      outflow: movement.outflow,
+      netChange: movement.netChange,
+      note: movement.note || "-",
+    });
+  });
+
+  const totalRow = worksheet.addRow({
+    no: "",
+    entryDate: "",
+    entryNumber: "",
+    sourceType: "",
+    description: "",
+    accountCode: "",
+    accountName: "TOTAL",
+    inflow: report.summary.totalCashInflow,
+    outflow: report.summary.totalCashOutflow,
+    netChange: report.summary.netCashFlow,
+    note: "",
+  });
+
+  totalRow.font = {
+    bold: true,
+  };
+
+worksheet.addRow([]);
+
+const sourceSummaryTitleRowNumber = worksheet.rowCount + 1;
+
+worksheet.mergeCells(`A${sourceSummaryTitleRowNumber}:K${sourceSummaryTitleRowNumber}`);
+worksheet.getCell(`A${sourceSummaryTitleRowNumber}`).value = "RINGKASAN PER SUMBER";
+worksheet.getCell(`A${sourceSummaryTitleRowNumber}`).font = {
+  bold: true,
+  color: {
+    argb: "FFFFFFFF",
+  },
+};
+worksheet.getCell(`A${sourceSummaryTitleRowNumber}`).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: {
+    argb: "FF1F4E78",
+  },
+};
+worksheet.getCell(`A${sourceSummaryTitleRowNumber}`).alignment = {
+  horizontal: "center",
+  vertical: "middle",
+};
+
+const sourceSummaryHeaderRow = worksheet.addRow({
+  no: "",
+  entryDate: "",
+  entryNumber: "",
+  sourceType: "Sumber",
+  description: "",
+  accountCode: "",
+  accountName: "",
+  inflow: "Kas Masuk",
+  outflow: "Kas Keluar",
+  netChange: "Perubahan Bersih",
+  note: "",
+});
+
+sourceSummaryHeaderRow.font = {
+  bold: true,
+};
+
+["D", "H", "I", "J"].forEach((column) => {
+  const cell = sourceSummaryHeaderRow.getCell(column);
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: "FFD9EAF7",
+    },
+  };
+
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+});
+
+Object.entries(report.summary.bySourceType).forEach(([sourceType, value]) => {
+  const row = worksheet.addRow({
+    no: "",
+    entryDate: "",
+    entryNumber: "",
+    sourceType,
+    description: "",
+    accountCode: "",
+    accountName: "",
+    inflow: value.inflow,
+    outflow: value.outflow,
+    netChange: value.net,
+    note: "",
+  });
+
+  row.getCell("D").alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  row.getCell("H").alignment = {
+    horizontal: "right",
+    vertical: "middle",
+  };
+
+  row.getCell("I").alignment = {
+    horizontal: "right",
+    vertical: "middle",
+  };
+
+  row.getCell("J").alignment = {
+    horizontal: "right",
+    vertical: "middle",
+  };
+});
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 5) {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+        };
+      });
+    }
+  });
+
+  const moneyColumns = ["H", "I", "J"];
+
+  moneyColumns.forEach((column) => {
+    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
+  });
+
+  worksheet.getColumn("B").numFmt = "dd mmmm yyyy";
+
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 5,
+    },
+  ];
+
+  worksheet.autoFilter = {
+    from: "A5",
+    to: "K5",
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    buffer,
+    fileName: `laporan-arus-kas-${formatDateForExcelFileName()}.xlsx`,
+  };
+};
+
+const exportCashFlowReportPdf = async ({ startDate, endDate } = {}) => {
+  const storeProfile = await settingsService.getStoreProfile();
+  const report = await getCashFlowReport({ startDate, endDate });
+
+  const buffer = await generateCashFlowReportPdfBuffer({
+    storeProfile,
+    report,
+    periodLabel: getReportPeriodLabel({
+      startDate,
+      endDate,
+    }),
+  });
+
+  return {
+    buffer,
+    fileName: `laporan-arus-kas-${formatDateForExcelFileName()}.pdf`,
+  };
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -3155,4 +3509,6 @@ module.exports = {
   exportPayrollReportPdf,
   exportProfitLossReportExcel,
   exportProfitLossReportPdf,
+  exportCashFlowReportExcel,
+  exportCashFlowReportPdf,
 };

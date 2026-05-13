@@ -127,6 +127,20 @@ router.get(
 );
 
 router.get(
+  "/cash-flow/export-excel",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportCashFlowReportExcel
+);
+
+router.get(
+  "/cash-flow/export-pdf",
+  authenticate,
+  authorizeRoles("OWNER"),
+  reportController.exportCashFlowReportPdf
+);
+
+router.get(
   "/cash-flow",
   authenticate,
   authorizeRoles("OWNER"),
