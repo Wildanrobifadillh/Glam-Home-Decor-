@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { authApi } from "./auth.api";
 import { authStore } from "./auth.store";
@@ -16,6 +17,7 @@ function LoginPage() {
 
 const [isLoading, setIsLoading] = useState(false);
 const [errorMessage, setErrorMessage] = useState("");
+const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
 const handleChange = (event) => {
   const { name, value } = event.target;
@@ -110,20 +112,40 @@ const handleSubmit = async (event) => {
 
             <div className="lp2-field">
               <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Masukkan password"
-              />
+
+              <div className="lp2-password-wrap">
+                <input
+                  type={isPasswordVisible ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Masukkan password"
+                />
+
+                <button
+                  type="button"
+                  className="lp2-password-toggle"
+                  onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+                  aria-label={
+                    isPasswordVisible ? "Sembunyikan password" : "Tampilkan password"
+                  }
+                >
+                  {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <label className="lp2-remember">
               <input type="checkbox" />
               <span>Ingat saya</span>
-              {errorMessage ? <p className="lp2-error">{errorMessage}</p> : null}
             </label>
+
+            <p
+              className={`lp2-error ${errorMessage ? "is-visible" : ""}`}
+              aria-live="polite"
+            >
+              {errorMessage || " "}
+            </p>
 
             <button type="submit" className="lp2-button" disabled={isLoading}>
               {isLoading ? "Memproses..." : "Masuk"}

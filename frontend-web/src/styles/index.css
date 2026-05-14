@@ -315,6 +315,40 @@ textarea {
   box-shadow: 0 0 0 4px rgba(200, 155, 69, 0.16);
 }
 
+.lp2-password-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.lp2-password-wrap input {
+  width: 100%;
+  padding-right: 50px;
+}
+
+.lp2-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--glam-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    color 180ms ease,
+    background 180ms ease;
+}
+
+.lp2-password-toggle:hover {
+  color: var(--glam-terracotta);
+  background: rgba(200, 155, 69, 0.12);
+}
+
 .lp2-remember {
   display: inline-flex;
   align-items: center;
@@ -389,19 +423,32 @@ textarea {
 }
 
 .lp2-error {
+  min-height: 38px;
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(185, 58, 47, 0.1);
-  border: 1px solid rgba(185, 58, 47, 0.18);
+  background: rgba(185, 58, 47, 0);
+  border: 1px solid rgba(185, 58, 47, 0);
   color: #b93a2f;
   font-size: 13px;
   font-weight: 700;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
 }
 
-.lp2-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.68;
-  transform: none;
+.lp2-error.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  background: rgba(185, 58, 47, 0.1);
+  border-color: rgba(185, 58, 47, 0.18);
+}
+
+.lp2-form-panel {
+  justify-content: center;
 }
 
