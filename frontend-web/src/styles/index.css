@@ -388,3 +388,20 @@ textarea {
   }
 }
 
+.lp2-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(185, 58, 47, 0.1);
+  border: 1px solid rgba(185, 58, 47, 0.18);
+  color: #b93a2f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lp2-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  transform: none;
+}
+
