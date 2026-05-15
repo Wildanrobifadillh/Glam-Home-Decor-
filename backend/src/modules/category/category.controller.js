@@ -6,7 +6,7 @@ const {
 
 const getAllCategories = async (req, res, next) => {
   try {
-    const categories = await categoryService.getAllCategories();
+    const categories = await categoryService.getAllCategories(req.query);
 
     return res.status(200).json({
       success: true,
@@ -91,10 +91,27 @@ const deactivateCategory = async (req, res, next) => {
   }
 };
 
+const activateCategory = async (req, res, next) => {
+  try {
+    const category = await categoryService.activateCategory(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Category activated successfully",
+      data: {
+        category,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllCategories,
   getCategoryById,
   createCategory,
   updateCategory,
   deactivateCategory,
+  activateCategory,
 };

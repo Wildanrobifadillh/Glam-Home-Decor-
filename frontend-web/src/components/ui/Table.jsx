@@ -26,42 +26,54 @@ function Table({
     );
   }
 
-  return (
-    <div className={clsx("ui-table-wrapper", className)}>
-      <table className="ui-table">
-        <thead>
-          <tr>
+return (
+  <div className={clsx("ui-table-wrapper", className)}>
+    <table className="ui-table">
+      <thead>
+        <tr>
+          {columns.map((column) => (
+            <th
+              key={column.key}
+              style={{ width: column.width }}
+              className={getAlignClassName(column.align)}
+            >
+              {column.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+
+      <tbody>
+        {data.map((row, rowIndex) => (
+          <tr key={row.id || rowIndex}>
             {columns.map((column) => (
-              <th
+              <td
                 key={column.key}
-                style={{ width: column.width }}
-                className={column.align === "right" ? "is-right" : ""}
+                className={getAlignClassName(column.align)}
               >
-                {column.label}
-              </th>
+                {column.render
+                  ? column.render(row, rowIndex)
+                  : row[column.key] || "-"}
+              </td>
             ))}
           </tr>
-        </thead>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+}
 
-        <tbody>
-          {data.map((row, rowIndex) => (
-            <tr key={row.id || rowIndex}>
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className={column.align === "right" ? "is-right" : ""}
-                >
-                  {column.render
-                    ? column.render(row, rowIndex)
-                    : row[column.key] || "-"}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+function getAlignClassName(align) {
+  if (align === "right") {
+    return "is-right";
+  }
+
+  if (align === "center") {
+    return "is-center";
+  }
+
+  return "";
 }
 
 export default Table;

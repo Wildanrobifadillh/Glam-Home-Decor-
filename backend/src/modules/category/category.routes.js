@@ -30,4 +30,11 @@ router.patch(
   categoryController.deactivateCategory
 );
 
+router.patch(
+  "/:id/activate",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  categoryController.activateCategory
+);
+
 module.exports = router;

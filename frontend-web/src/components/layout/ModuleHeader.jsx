@@ -7,7 +7,7 @@ function ModuleHeader({
   return (
     <div className="module-header">
       <div>
-        <p>{eyebrow}</p>
+        {eyebrow ? <p>{eyebrow}</p> : null}
         <h1>{title}</h1>
         {description ? <span>{description}</span> : null}
       </div>

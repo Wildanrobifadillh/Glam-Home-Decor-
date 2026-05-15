@@ -1,7 +1,23 @@
 const prisma = require("../../config/prisma");
 
-const getAllCategories = async () => {
+const getAllCategories = async (query = {}) => {
+  const { search, status } = query;
+
+  const where = {};
+
+  if (search) {
+    where.name = {
+      contains: search,
+      mode: "insensitive",
+    };
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
   return prisma.category.findMany({
+    where,
     orderBy: {
       name: "asc",
     },
@@ -82,10 +98,24 @@ const deactivateCategory = async (id) => {
   });
 };
 
+const activateCategory = async (id) => {
+  await getCategoryById(id);
+
+  return prisma.category.update({
+    where: {
+      id,
+    },
+    data: {
+      status: "ACTIVE",
+    },
+  });
+};
+
 module.exports = {
   getAllCategories,
   getCategoryById,
   createCategory,
   updateCategory,
   deactivateCategory,
+  activateCategory,
 };
