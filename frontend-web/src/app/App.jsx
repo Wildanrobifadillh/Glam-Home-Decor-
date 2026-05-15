@@ -1,8 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import DashboardLayout from "../components/layout/DashboardLayout.jsx";
 import LoginPage from "../features/auth/LoginPage.jsx";
-import DashboardPage from "../features/dashboard/DashboardPage.jsx";
 import { authStore } from "../features/auth/auth.store.js";
+import DashboardPage from "../features/dashboard/DashboardPage.jsx";
+import PlaceholderPage from "../features/dashboard/PlaceholderPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -36,13 +38,34 @@ function App() {
         />
 
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <DashboardLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/categories" element={<PlaceholderPage title="Kategori" />} />
+          <Route path="/products" element={<PlaceholderPage title="Barang" />} />
+          <Route path="/suppliers" element={<PlaceholderPage title="Supplier" />} />
+          <Route path="/customers" element={<PlaceholderPage title="Pelanggan" />} />
+          <Route path="/employees" element={<PlaceholderPage title="Karyawan" />} />
+          <Route path="/inventory" element={<PlaceholderPage title="Inventory" />} />
+          <Route path="/stock-history" element={<PlaceholderPage title="Histori Stok" />} />
+          <Route path="/stock-opname" element={<PlaceholderPage title="Stock Opname" />} />
+          <Route path="/purchases" element={<PlaceholderPage title="Pembelian" />} />
+          <Route path="/sales" element={<PlaceholderPage title="Penjualan" />} />
+          <Route path="/returns" element={<PlaceholderPage title="Retur" />} />
+          <Route path="/receivables" element={<PlaceholderPage title="Piutang" />} />
+          <Route path="/payables" element={<PlaceholderPage title="Hutang" />} />
+          <Route path="/payroll" element={<PlaceholderPage title="Payroll" />} />
+          <Route path="/journal-entries" element={<PlaceholderPage title="Jurnal" />} />
+          <Route path="/accounting" element={<PlaceholderPage title="Akun Perkiraan" />} />
+          <Route path="/reports" element={<PlaceholderPage title="Laporan" />} />
+          <Route path="/settings" element={<PlaceholderPage title="Pengaturan" />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
