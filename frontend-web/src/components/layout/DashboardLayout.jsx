@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { authStore } from "../../features/auth/auth.store";
 import Sidebar from "./Sidebar";
@@ -6,6 +6,7 @@ import Topbar from "./Topbar";
 
 function DashboardLayout() {
   const user = authStore.getUser();
+  const location = useLocation();
 
   return (
     <div className="dashboard-shell-v3">
@@ -15,7 +16,9 @@ function DashboardLayout() {
         <Topbar user={user} />
 
         <main className="dashboard-content-v3">
-          <Outlet />
+          <div key={location.pathname} className="page-route-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
