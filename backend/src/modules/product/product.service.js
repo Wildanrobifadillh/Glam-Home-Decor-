@@ -152,11 +152,45 @@ const updateProduct = async (id, data) => {
     }
   }
 
+  const updateData = {
+    ...data,
+  };
+
+  if (data.supplierCode) {
+    const searchCode = normalizeSearchCode(data.supplierCode);
+
+    const existingSupplierCode = await prisma.product.findUnique({
+      where: {
+        supplierCode: data.supplierCode,
+      },
+    });
+
+    if (existingSupplierCode && existingSupplierCode.id !== id) {
+      const error = new Error("Kode barang sudah digunakan");
+      error.status = 409;
+      throw error;
+    }
+
+    const existingSearchCode = await prisma.product.findUnique({
+      where: {
+        searchCode,
+      },
+    });
+
+    if (existingSearchCode && existingSearchCode.id !== id) {
+      const error = new Error("Kode pencarian barang sudah digunakan");
+      error.status = 409;
+      throw error;
+    }
+
+    updateData.searchCode = searchCode;
+  }
+
   return prisma.product.update({
     where: {
       id,
     },
-    data,
+    data: updateData,
     include: {
       category: true,
     },
@@ -179,10 +213,27 @@ const deactivateProduct = async (id) => {
   });
 };
 
+const activateProduct = async (id) => {
+  await getProductById(id);
+
+  return prisma.product.update({
+    where: {
+      id,
+    },
+    data: {
+      status: "ACTIVE",
+    },
+    include: {
+      category: true,
+    },
+  });
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
   createProduct,
   updateProduct,
   deactivateProduct,
+  activateProduct,
 };

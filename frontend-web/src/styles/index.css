@@ -1851,3 +1851,122 @@ textarea {
     transform: translateX(320%);
   }
 }
+
+.product-table .ui-table {
+  min-width: 1180px;
+}
+
+.product-name-cell strong {
+  max-width: 220px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.product-table .ui-table {
+  min-width: 1320px;
+  table-layout: fixed;
+}
+
+.product-table .ui-table th,
+.product-table .ui-table td {
+  padding: 16px 14px;
+  white-space: nowrap;
+}
+
+.product-table .ui-table th:nth-child(1),
+.product-table .ui-table td:nth-child(1) {
+  width: 150px;
+}
+
+.product-table .ui-table th:nth-child(2),
+.product-table .ui-table td:nth-child(2) {
+  width: 250px;
+}
+
+.product-table .ui-table th:nth-child(3),
+.product-table .ui-table td:nth-child(3) {
+  width: 140px;
+}
+
+.product-table .ui-table th:nth-child(4),
+.product-table .ui-table td:nth-child(4) {
+  width: 110px;
+}
+
+.product-table .ui-table th:nth-child(5),
+.product-table .ui-table td:nth-child(5),
+.product-table .ui-table th:nth-child(6),
+.product-table .ui-table td:nth-child(6) {
+  width: 145px;
+}
+
+.product-table .ui-table th:nth-child(7),
+.product-table .ui-table td:nth-child(7) {
+  width: 90px;
+}
+
+.product-table .ui-table th:nth-child(8),
+.product-table .ui-table td:nth-child(8) {
+  width: 120px;
+}
+
+.product-table .ui-table th:nth-child(9),
+.product-table .ui-table td:nth-child(9) {
+  width: 220px;
+}
+
+.product-name-cell strong {
+  max-width: 230px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.product-form-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.product-form-modal .ui-modal-body {
+  padding: 22px 26px;
+}
+
+.product-form-modal .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+.product-form-modal .form-field {
+  min-height: 92px;
+  align-content: start;
+}
+
+.product-form-modal .form-field-helper {
+  min-height: 18px;
+}
+
+.product-form-modal .ui-input,
+.product-form-modal .ui-textarea {
+  min-height: 46px;
+}
+
+.product-form-modal .form-actions {
+  margin-top: 8px;
+}
+
+.form-error-alert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(185, 58, 47, 0.1);
+  border: 1px solid rgba(185, 58, 47, 0.18);
+  color: #b93a2f;
+  font-size: 13px;
+  font-weight: 800;
+}

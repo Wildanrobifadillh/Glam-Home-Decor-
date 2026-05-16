@@ -30,4 +30,11 @@ router.patch(
   productController.deactivateProduct
 );
 
+router.patch(
+  "/:id/activate",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  productController.activateProduct
+);
+
 module.exports = router;

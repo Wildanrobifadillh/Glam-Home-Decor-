@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 
 function Modal({
   open = false,
@@ -9,6 +10,7 @@ function Modal({
   children,
   footer,
   onClose,
+  className = ""
 }) {
   useEffect(() => {
     if (!open) {
@@ -37,7 +39,7 @@ function Modal({
   return createPortal(
     <div className="ui-modal-overlay" role="presentation" onMouseDown={onClose}>
       <div
-        className="ui-modal"
+        className={clsx("ui-modal", className)}
         role="dialog"
         aria-modal="true"
         aria-label={title}

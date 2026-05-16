@@ -95,10 +95,27 @@ const deactivateProduct = async (req, res, next) => {
   }
 };
 
+const activateProduct = async (req, res, next) => {
+  try {
+    const product = await productService.activateProduct(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Product activated successfully",
+      data: {
+        product,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
   createProduct,
   updateProduct,
   deactivateProduct,
+  activateProduct,
 };

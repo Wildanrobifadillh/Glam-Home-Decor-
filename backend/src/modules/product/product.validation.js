@@ -58,6 +58,8 @@ const createProductSchema = z.object({
 });
 
 const updateProductSchema = z.object({
+  supplierCode: z.string().trim().min(1, "Kode barang wajib diisi").optional(),
+
   name: z.string().trim().min(1, "Product name is required").optional(),
 
   categoryId: z.string().uuid("Invalid category ID").optional(),
