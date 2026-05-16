@@ -18,6 +18,7 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { productApi } from "./product.api";
+import CurrencyInput from "../../components/form/CurrencyInput";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -572,19 +573,16 @@ function ProductListPage() {
             </FormField>
 
             <FormField label="Harga Beli" required>
-              <Input
-                type="number"
+              <CurrencyInput
                 name="purchasePrice"
                 value={formValues.purchasePrice}
                 onChange={handleFormChange}
                 placeholder="0"
-                min="0"
               />
             </FormField>
 
             <FormField label="Harga Jual">
-              <Input
-                type="number"
+              <CurrencyInput
                 name="sellingPrice"
                 value={formValues.sellingPrice}
                 onChange={handleFormChange}

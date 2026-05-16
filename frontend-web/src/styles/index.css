@@ -2044,3 +2044,115 @@ textarea {
 .customer-table .table-actions {
   justify-content: center;
 }
+
+.employee-table .ui-table {
+  min-width: 1360px;
+  table-layout: fixed;
+}
+
+.employee-table .ui-table th,
+.employee-table .ui-table td {
+  padding: 16px 14px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.employee-table .ui-table th:nth-child(1),
+.employee-table .ui-table td:nth-child(1) {
+  width: 220px;
+}
+
+.employee-table .ui-table th:nth-child(2),
+.employee-table .ui-table td:nth-child(2) {
+  width: 160px;
+}
+
+.employee-table .ui-table th:nth-child(3),
+.employee-table .ui-table td:nth-child(3) {
+  width: 160px;
+}
+
+.employee-table .ui-table th:nth-child(4),
+.employee-table .ui-table td:nth-child(4) {
+  width: 160px;
+}
+
+.employee-table .ui-table th:nth-child(5),
+.employee-table .ui-table td:nth-child(5) {
+  width: 170px;
+}
+
+.employee-table .ui-table th:nth-child(6),
+.employee-table .ui-table td:nth-child(6) {
+  width: 170px;
+}
+
+.employee-table .ui-table th:nth-child(7),
+.employee-table .ui-table td:nth-child(7) {
+  width: 140px;
+}
+
+.employee-table .ui-table th:nth-child(8),
+.employee-table .ui-table td:nth-child(8) {
+  width: 220px;
+}
+
+.employee-name-cell strong {
+  max-width: 200px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.employee-user-cell {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.employee-user-cell strong {
+  max-width: 130px;
+  overflow: hidden;
+  color: var(--glam-text);
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-user-cell span {
+  color: var(--glam-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.employee-form-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.employee-form-modal .ui-modal-body {
+  padding: 22px 26px;
+}
+
+.employee-form-modal .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+.employee-form-modal .form-field {
+  min-height: 92px;
+  align-content: start;
+}
+
+.employee-form-modal .form-field-helper {
+  min-height: 18px;
+}
+
+.employee-form-modal .form-actions {
+  margin-top: 8px;
+}

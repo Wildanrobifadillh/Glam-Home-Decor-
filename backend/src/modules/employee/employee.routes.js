@@ -30,4 +30,11 @@ router.patch(
   employeeController.deactivateEmployee
 );
 
+router.patch(
+  "/:id/activate",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  employeeController.activateEmployee
+);
+
 module.exports = router;

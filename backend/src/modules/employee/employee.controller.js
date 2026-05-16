@@ -6,7 +6,7 @@ const {
 
 const getAllEmployees = async (req, res, next) => {
   try {
-    const employees = await employeeService.getAllEmployees();
+    const employees = await employeeService.getAllEmployees(req.query);
 
     return res.status(200).json({
       success: true,
@@ -91,10 +91,27 @@ const deactivateEmployee = async (req, res, next) => {
   }
 };
 
+const activateEmployee = async (req, res, next) => {
+  try {
+    const employee = await employeeService.activateEmployee(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee activated successfully",
+      data: {
+        employee,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
   createEmployee,
   updateEmployee,
   deactivateEmployee,
+  activateEmployee,
 };

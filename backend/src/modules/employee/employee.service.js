@@ -1,7 +1,66 @@
 const prisma = require("../../config/prisma");
 
-const getAllEmployees = async () => {
+const getAllEmployees = async (query = {}) => {
+  const search = query.search?.trim();
+  const status = query.status;
+
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        phone: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        address: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        position: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        user: {
+          is: {
+            name: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
+      {
+        user: {
+          is: {
+            username: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
+    ];
+  }
+
+  if (status === "ACTIVE" || status === "INACTIVE") {
+    where.status = status;
+  }
+
   return prisma.employee.findMany({
+    where,
     include: {
       user: {
         select: {
@@ -191,10 +250,45 @@ const deactivateEmployee = async (id) => {
   });
 };
 
+const activateEmployee = async (id) => {
+  const employee = await prisma.employee.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!employee) {
+    const error = new Error("Employee not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return prisma.employee.update({
+    where: {
+      id,
+    },
+    data: {
+      status: "ACTIVE",
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+          status: true,
+        },
+      },
+    },
+  });
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
   createEmployee,
   updateEmployee,
   deactivateEmployee,
+  activateEmployee,
 };
