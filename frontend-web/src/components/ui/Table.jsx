@@ -10,7 +10,7 @@ function Table({
   emptyDescription = "Belum ada data yang bisa ditampilkan.",
   className = "",
 }) {
-  if (isLoading) {
+  if (isLoading && !data.length) {
     return (
       <div className="ui-table-wrapper">
         <Loading />
@@ -18,7 +18,7 @@ function Table({
     );
   }
 
-  if (!data.length) {
+  if (!isLoading && !data.length) {
     return (
       <div className="ui-table-wrapper">
         <EmptyState title={emptyTitle} description={emptyDescription} />
@@ -27,7 +27,7 @@ function Table({
   }
 
 return (
-  <div className={clsx("ui-table-wrapper", className)}>
+  <div className={clsx("ui-table-wrapper", isLoading && "is-fetching", className)}>
     <table className="ui-table">
       <thead>
         <tr>

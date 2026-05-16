@@ -30,4 +30,11 @@ router.patch(
   supplierController.deactivateSupplier
 );
 
+router.patch(
+  "/:id/activate",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  supplierController.activateSupplier
+);
+
 module.exports = router;

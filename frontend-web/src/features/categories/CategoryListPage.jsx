@@ -15,6 +15,7 @@ import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { categoryApi } from "./category.api";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -26,10 +27,13 @@ function CategoryListPage() {
     totalItems: 0,
   });
 
+  const [searchInput, setSearchInput] = useState("");
+
   const [filters, setFilters] = useState({
-    search: "",
     status: "",
   });
+
+  const debouncedSearch = useDebouncedValue(searchInput, 350);
 
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +59,7 @@ function CategoryListPage() {
       const response = await categoryApi.getList({
         page,
         limit: DEFAULT_PAGE_SIZE,
-        search: filters.search || undefined,
+        search: debouncedSearch || undefined,
         status: filters.status || undefined,
       });
 
@@ -86,7 +90,7 @@ function CategoryListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, filters.search, filters.status]);
+  }, [page, debouncedSearch, filters.status]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -100,10 +104,7 @@ function CategoryListPage() {
 
   const handleSearchChange = (value) => {
     setPage(1);
-    setFilters((currentFilters) => ({
-      ...currentFilters,
-      search: value,
-    }));
+    setSearchInput(value);
   };
 
   const handleStatusChange = (event) => {
@@ -116,8 +117,8 @@ function CategoryListPage() {
 
   const handleResetFilter = () => {
     setPage(1);
+    setSearchInput("");
     setFilters({
-      search: "",
       status: "",
     });
   };
@@ -304,7 +305,7 @@ function CategoryListPage() {
         filters={
           <FilterBar>
             <SearchInput
-              value={filters.search}
+              value={searchInput}
               onChange={handleSearchChange}
               placeholder="Cari kategori..."
             />

@@ -6,6 +6,7 @@ import { authStore } from "../features/auth/auth.store.js";
 import DashboardPage from "../features/dashboard/DashboardPage.jsx";
 import CategoryListPage from "../features/categories/CategoryListPage.jsx";
 import PlaceholderPage from "../features/dashboard/PlaceholderPage.jsx";
+import SupplierListPage from "../features/suppliers/SupplierListPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -48,7 +49,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/categories" element={<CategoryListPage />} />
           <Route path="/products" element={<PlaceholderPage title="Barang" />} />
-          <Route path="/suppliers" element={<PlaceholderPage title="Supplier" />} />
+          <Route path="/suppliers" element={<SupplierListPage />} />
           <Route path="/customers" element={<PlaceholderPage title="Pelanggan" />} />
           <Route path="/employees" element={<PlaceholderPage title="Karyawan" />} />
           <Route path="/inventory" element={<PlaceholderPage title="Inventory" />} />

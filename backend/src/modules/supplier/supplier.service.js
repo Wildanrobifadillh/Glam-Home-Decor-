@@ -1,7 +1,40 @@
 const prisma = require("../../config/prisma");
 
-const getAllSuppliers = async () => {
+const getAllSuppliers = async (query = {}) => {
+  const search = query.search?.trim();
+  const status = query.status;
+
+  const where = {};
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        phone: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        address: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+    ];
+  }
+
+  if (status === "ACTIVE" || status === "INACTIVE") {
+    where.status = status;
+  }
+
   return prisma.supplier.findMany({
+    where,
     orderBy: {
       name: "asc",
     },
@@ -84,10 +117,24 @@ const deactivateSupplier = async (id) => {
   });
 };
 
+const activateSupplier = async (id) => {
+  await getSupplierById(id);
+
+  return prisma.supplier.update({
+    where: {
+      id,
+    },
+    data: {
+      status: "ACTIVE",
+    },
+  });
+};
+
 module.exports = {
   getAllSuppliers,
   getSupplierById,
   createSupplier,
   updateSupplier,
   deactivateSupplier,
+  activateSupplier
 };

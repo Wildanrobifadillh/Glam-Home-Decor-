@@ -6,7 +6,7 @@ const {
 
 const getAllSuppliers = async (req, res, next) => {
   try {
-    const suppliers = await supplierService.getAllSuppliers();
+    const suppliers = await supplierService.getAllSuppliers(req.query);
 
     return res.status(200).json({
       success: true,
@@ -91,10 +91,27 @@ const deactivateSupplier = async (req, res, next) => {
   }
 };
 
+const activateSupplier = async (req, res, next) => {
+  try {
+    const supplier = await supplierService.activateSupplier(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Supplier activated successfully",
+      data: {
+        supplier,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSuppliers,
   getSupplierById,
   createSupplier,
   updateSupplier,
   deactivateSupplier,
+  activateSupplier,
 };

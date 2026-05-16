@@ -1803,3 +1803,51 @@ textarea {
   align-items: center;
   gap: 8px;
 }
+
+.table-main-text.is-center {
+  justify-items: center;
+  text-align: center;
+}
+
+.table-address-text {
+  display: inline-block;
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--glam-text);
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.ui-table-wrapper {
+  position: relative;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.ui-table-wrapper.is-fetching {
+  opacity: 0.82;
+}
+
+.ui-table-wrapper.is-fetching::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 34%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c89b45, #e2c16d);
+  animation: tableFetchingBar 900ms ease-in-out infinite;
+}
+
+@keyframes tableFetchingBar {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
