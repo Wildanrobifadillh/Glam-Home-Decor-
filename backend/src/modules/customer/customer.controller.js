@@ -6,7 +6,7 @@ const {
 
 const getAllCustomers = async (req, res, next) => {
   try {
-    const customers = await customerService.getAllCustomers();
+    const customers = await customerService.getAllCustomers(req.query);
 
     return res.status(200).json({
       success: true,
@@ -91,10 +91,27 @@ const deactivateCustomer = async (req, res, next) => {
   }
 };
 
+const activateCustomer = async (req, res, next) => {
+  try {
+    const customer = await customerService.activateCustomer(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer activated successfully",
+      data: {
+        customer,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllCustomers,
   getCustomerById,
   createCustomer,
   updateCustomer,
   deactivateCustomer,
+  activateCustomer,
 };

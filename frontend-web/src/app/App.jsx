@@ -8,6 +8,7 @@ import CategoryListPage from "../features/categories/CategoryListPage.jsx";
 import PlaceholderPage from "../features/dashboard/PlaceholderPage.jsx";
 import SupplierListPage from "../features/suppliers/SupplierListPage.jsx";
 import ProductListPage from "../features/products/ProductListPage.jsx";
+import CustomerListPage from "../features/customers/CustomerListPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -51,7 +52,7 @@ function App() {
           <Route path="/categories" element={<CategoryListPage />} />
           <Route path="/products" element={<ProductListPage />} />
           <Route path="/suppliers" element={<SupplierListPage />} />
-          <Route path="/customers" element={<PlaceholderPage title="Pelanggan" />} />
+          <Route path="/customers" element={<CustomerListPage />} />
           <Route path="/employees" element={<PlaceholderPage title="Karyawan" />} />
           <Route path="/inventory" element={<PlaceholderPage title="Inventory" />} />
           <Route path="/stock-history" element={<PlaceholderPage title="Histori Stok" />} />

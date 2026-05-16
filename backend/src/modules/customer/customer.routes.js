@@ -30,4 +30,11 @@ router.patch(
   customerController.deactivateCustomer
 );
 
+router.patch(
+  "/:id/activate",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  customerController.activateCustomer
+);
+
 module.exports = router;
