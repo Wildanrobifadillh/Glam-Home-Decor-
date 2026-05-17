@@ -8,12 +8,13 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
-import Table from "../../components/ui/Table";
+import DateRangeFilter from "../../components/form/DateRangeFilter";import Table from "../../components/ui/Table";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { productApi } from "../products/product.api";
 import { inventoryApi } from "./inventory.api";
+
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -37,6 +38,8 @@ function StockHistoryPage() {
   const [filters, setFilters] = useState({
     productId: "",
     type: "",
+    dateFrom: "",
+    dateTo: "",
   });
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
@@ -70,15 +73,21 @@ function StockHistoryPage() {
 
       const pagination = responseData?.pagination || responseData?.meta || {};
 
-      setStockHistories(Array.isArray(list) ? list : []);
+      const rawList = Array.isArray(list) ? list : [];
+
+      const filteredList = rawList.filter((history) =>
+        isDateInRange(history.createdAt, filters.dateFrom, filters.dateTo)
+    );
+
+    setStockHistories(filteredList);
       setMeta({
         page: pagination.page || page,
         totalPages: pagination.totalPages || pagination.totalPage || 1,
-        totalItems:
-          pagination.totalItems ||
-          pagination.total ||
-          pagination.count ||
-          (Array.isArray(list) ? list.length : 0),
+      totalItems:
+        pagination.totalItems ||
+        pagination.total ||
+        pagination.count ||
+        filteredList.length,
       });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -86,7 +95,7 @@ function StockHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.productId, filters.type]);
+  }, [page, debouncedSearch, filters.productId, filters.type, filters.dateFrom, filters.dateTo]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoadingProducts(true);
@@ -153,14 +162,25 @@ function StockHistoryPage() {
     }));
   };
 
-  const handleResetFilter = () => {
-    setPage(1);
-    setSearchInput("");
-    setFilters({
-      productId: "",
-      type: "",
-    });
-  };
+    const handleResetFilter = () => {
+      setPage(1);
+      setSearchInput("");
+      setFilters({
+        productId: "",
+        type: "",
+        dateFrom: "",
+        dateTo: "",
+      });
+    };
+
+    const handleDateRangeChange = (value) => {
+      setPage(1);
+      setFilters((currentFilters) => ({
+        ...currentFilters,
+        dateFrom: value.dateFrom,
+        dateTo: value.dateTo,
+      }));
+    };
 
     const columns = useMemo(
       () => [
@@ -310,6 +330,14 @@ function StockHistoryPage() {
             ))}
           </Select>
 
+          <DateRangeFilter
+            value={{
+              dateFrom: filters.dateFrom,
+              dateTo: filters.dateTo,
+            }}
+            onChange={handleDateRangeChange}
+          />
+          
           <Button variant="secondary" size="sm" onClick={fetchStockHistories}>
             <RefreshCcw size={15} />
             Refresh
@@ -365,6 +393,32 @@ function formatMovementQuantity(type, quantity) {
   if (type === "OUT" || type === "DAMAGED") return `-${quantity}`;
 
   return quantity;
+}
+
+function isDateInRange(value, dateFrom, dateTo) {
+  if (!value) {
+    return false;
+  }
+
+  const currentDate = new Date(value);
+
+  if (dateFrom) {
+    const startDate = new Date(`${dateFrom}T00:00:00`);
+
+    if (currentDate < startDate) {
+      return false;
+    }
+  }
+
+  if (dateTo) {
+    const endDate = new Date(`${dateTo}T23:59:59`);
+
+    if (currentDate > endDate) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export default StockHistoryPage;

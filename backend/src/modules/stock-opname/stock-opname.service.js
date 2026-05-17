@@ -150,7 +150,7 @@ const createStockOpname = async ({ note, items, createdById }) => {
           movementNumber: `STK-ADJ-${opnameNumber}-${index + 1}`,
           productId: item.productId,
           type: "ADJUSTMENT",
-          quantity: Math.abs(difference),
+          quantity: difference,
           stockBefore,
           stockAfter,
           note: item.note || `Stock opname ${opnameNumber}`,

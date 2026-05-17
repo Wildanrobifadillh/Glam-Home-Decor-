@@ -12,6 +12,7 @@ import CustomerListPage from "../features/customers/CustomerListPage.jsx";
 import EmployeeListPage from "../features/employees/EmployeeListPage.jsx";
 import InventoryPage from "../features/inventory/InventoryPage.jsx";
 import StockHistoryPage from "../features/inventory/StockHistoryPage.jsx";
+import StockOpnamePage from "../features/stock-opname/StockOpnamePage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -59,7 +60,7 @@ function App() {
           <Route path="/employees" element={<EmployeeListPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/stock-history" element={<StockHistoryPage />} />
-          <Route path="/stock-opname" element={<PlaceholderPage title="Stock Opname" />} />
+          <Route path="/stock-opname" element={<StockOpnamePage />} />
           <Route path="/purchases" element={<PlaceholderPage title="Pembelian" />} />
           <Route path="/sales" element={<PlaceholderPage title="Penjualan" />} />
           <Route path="/returns" element={<PlaceholderPage title="Retur" />} />
