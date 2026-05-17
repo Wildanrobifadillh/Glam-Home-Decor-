@@ -1,7 +1,9 @@
 const prisma = require("../../config/prisma");
 const { generateMovementNumber } = require("../../utils/generateMovementNumber");
 
-const getStockHistories = async ({ productId, type }) => {
+const getStockHistories = async ({ search, productId, type }) => {
+  const keyword = search?.trim();
+
   const where = {};
 
   if (productId) {
@@ -10,6 +12,51 @@ const getStockHistories = async ({ productId, type }) => {
 
   if (type) {
     where.type = type;
+  }
+
+  if (keyword) {
+    where.OR = [
+      {
+        movementNumber: {
+          contains: keyword,
+          mode: "insensitive",
+        },
+      },
+      {
+        product: {
+          is: {
+            supplierCode: {
+              contains: keyword,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
+      {
+        product: {
+          is: {
+            name: {
+              contains: keyword,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
+      {
+        product: {
+          is: {
+            category: {
+              is: {
+                name: {
+                  contains: keyword,
+                  mode: "insensitive",
+                },
+              },
+            },
+          },
+        },
+      },
+    ];
   }
 
   return prisma.stockHistory.findMany({

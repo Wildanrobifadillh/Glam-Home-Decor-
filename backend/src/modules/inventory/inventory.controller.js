@@ -9,6 +9,7 @@ const {
 const getStockHistories = async (req, res, next) => {
   try {
     const stockHistories = await inventoryService.getStockHistories({
+      search: req.query.search,
       productId: req.query.productId,
       type: req.query.type,
     });
