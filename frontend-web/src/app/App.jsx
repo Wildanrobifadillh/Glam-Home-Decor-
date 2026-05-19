@@ -13,6 +13,10 @@ import EmployeeListPage from "../features/employees/EmployeeListPage.jsx";
 import InventoryPage from "../features/inventory/InventoryPage.jsx";
 import StockHistoryPage from "../features/inventory/StockHistoryPage.jsx";
 import StockOpnamePage from "../features/stock-opname/StockOpnamePage.jsx";
+import PurchaseListPage from "../features/purchases/PurchaseListPage.jsx";
+import PurchaseCreatePage from "../features/purchases/PurchaseCreatePage.jsx";
+import PurchaseDetailPage from "../features/purchases/PurchaseDetailPage.jsx";
+import PurchaseReportPage from "../features/purchases/PurchaseReportPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -61,7 +65,10 @@ function App() {
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/stock-history" element={<StockHistoryPage />} />
           <Route path="/stock-opname" element={<StockOpnamePage />} />
-          <Route path="/purchases" element={<PlaceholderPage title="Pembelian" />} />
+          <Route path="/purchases" element={<PurchaseListPage />} />
+          <Route path="/purchases/create" element={<PurchaseCreatePage />} />
+          <Route path="/purchases/report" element={<PurchaseReportPage />} />
+          <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
           <Route path="/sales" element={<PlaceholderPage title="Penjualan" />} />
           <Route path="/returns" element={<PlaceholderPage title="Retur" />} />
           <Route path="/receivables" element={<PlaceholderPage title="Piutang" />} />
