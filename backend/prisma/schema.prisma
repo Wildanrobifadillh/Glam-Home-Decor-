@@ -177,6 +177,7 @@ model Product {
   sellingPrice  Int          @map("selling_price")
   minStock      Int          @default(0) @map("min_stock")
   stock         Int          @default(0)
+  imageUrl      String?      @map("image_url")
   status        MasterStatus @default(ACTIVE)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")

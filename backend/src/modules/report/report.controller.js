@@ -5,6 +5,10 @@ const getSalesReport = async (req, res, next) => {
     const report = await reportService.getSalesReport({
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      paymentStatus: req.query.paymentStatus,
+      paymentMethod: req.query.paymentMethod,
+      status: req.query.status,
+      search: req.query.search,
     });
 
     return res.status(200).json({

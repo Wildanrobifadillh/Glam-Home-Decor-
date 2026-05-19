@@ -26,6 +26,10 @@ const getAgingBucket = (daysOutstanding) => {
   return "90+";
 };
 
+const getReceivableAgingDate = (sale) => {
+  return sale.dueDate || sale.createdAt;
+};
+
 const buildReceivableWhere = ({ paymentStatus, customerId, search } = {}) => {
   if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
     const error = new Error("Invalid payment status");
@@ -68,6 +72,12 @@ const buildReceivableWhere = ({ paymentStatus, customerId, search } = {}) => {
             },
           },
           {
+            invoiceNumber: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
             customerName: {
               contains: search,
               mode: "insensitive",
@@ -88,12 +98,14 @@ const buildReceivableWhere = ({ paymentStatus, customerId, search } = {}) => {
 };
 
 const formatReceivable = (sale) => {
-  const daysOutstanding = getDaysOutstanding(sale.createdAt);
+  const agingDate = getReceivableAgingDate(sale);
+  const daysOutstanding = getDaysOutstanding(agingDate);
   const lastPayment = sale.receivablePayments?.[0] || null;
 
   return {
     id: sale.id,
     saleNumber: sale.saleNumber,
+    invoiceNumber: sale.invoiceNumber,
     customerId: sale.customerId,
     customerName: sale.customerName,
     customerPhone: sale.customerPhone,
@@ -102,8 +114,10 @@ const formatReceivable = (sale) => {
     remainingAmount: sale.remainingAmount,
     paymentStatus: sale.paymentStatus,
     status: sale.status,
+    dueDate: sale.dueDate,
     daysOutstanding,
-    agingBucket: sale.remainingAmount > 0 ? getAgingBucket(daysOutstanding) : "PAID",
+    agingBucket:
+      sale.remainingAmount > 0 ? getAgingBucket(daysOutstanding) : "PAID",
     createdAt: sale.createdAt,
     updatedAt: sale.updatedAt,
     customer: sale.customer,
@@ -212,13 +226,14 @@ const getReceivableSummary = async () => {
     }
 
     if (sale.remainingAmount > 0) {
-      summary.activeReceivableCount += 1;
+  summary.activeReceivableCount += 1;
 
-      const daysOutstanding = getDaysOutstanding(sale.createdAt);
-      const agingBucket = getAgingBucket(daysOutstanding);
+  const agingDate = getReceivableAgingDate(sale);
+  const daysOutstanding = getDaysOutstanding(agingDate);
+  const agingBucket = getAgingBucket(daysOutstanding);
 
-      summary.aging[agingBucket] += sale.remainingAmount;
-    }
+  summary.aging[agingBucket] += sale.remainingAmount;
+}
 
     const customerKey =
       sale.customerId || `${sale.customerName || "Walk-in"}-${sale.customerPhone || ""}`;
@@ -309,13 +324,14 @@ const getReceivableBySaleId = async (saleId) => {
     throw error;
   }
 
+  const agingDate = getReceivableAgingDate(sale);
+  const daysOutstanding = getDaysOutstanding(agingDate);
+
   return {
     ...sale,
-    daysOutstanding: getDaysOutstanding(sale.createdAt),
+    daysOutstanding,
     agingBucket:
-      sale.remainingAmount > 0
-        ? getAgingBucket(getDaysOutstanding(sale.createdAt))
-        : "PAID",
+      sale.remainingAmount > 0 ? getAgingBucket(daysOutstanding) : "PAID",
   };
 };
 

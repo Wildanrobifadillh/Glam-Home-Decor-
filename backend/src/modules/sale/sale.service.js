@@ -443,8 +443,8 @@ const createSale = async ({
       normalizedTaxAmount +
       totalAdditionalCostAmount;
 
-    if (totalAmount < 0) {
-      const error = new Error("Total amount cannot be negative");
+    if (totalAmount <= 0) {
+      const error = new Error("Total amount must be greater than 0");
       error.status = 400;
       throw error;
     }
@@ -1039,6 +1039,7 @@ const getSaleInvoicePreview = async (saleId) => {
       productCode: item.product.searchCode,
       supplierCode: item.product.supplierCode,
       productName: item.product.name,
+      imageUrl: item.product.imageUrl,
       categoryName: item.product.category ? item.product.category.name : null,
       unit: item.product.unit,
       quantity: item.quantity,

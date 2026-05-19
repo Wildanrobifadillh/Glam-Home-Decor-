@@ -1,5 +1,16 @@
 const { z } = require("zod");
 
+const imageUrlSchema = z.preprocess(
+  (value) => {
+    if (value === "") {
+      return null;
+    }
+
+    return value;
+  },
+  z.string().trim().nullable().optional()
+);
+
 const createProductSchema = z.object({
   supplierCode: z
     .string({
@@ -48,6 +59,8 @@ const createProductSchema = z.object({
     .nonnegative("Minimum stock cannot be negative")
     .optional()
     .default(0),
+  
+  imageUrl: imageUrlSchema,
 
   stock: z.coerce
     .number()
@@ -83,6 +96,8 @@ const updateProductSchema = z.object({
     .int("Minimum stock must be an integer")
     .nonnegative("Minimum stock cannot be negative")
     .optional(),
+
+  imageUrl: imageUrlSchema,
 
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });

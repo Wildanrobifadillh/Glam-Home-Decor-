@@ -19,7 +19,7 @@ const saleItemSchema = z.object({
       required_error: "Selling price is required",
     })
     .int("Selling price must be an integer")
-    .nonnegative("Selling price cannot be negative"),
+    .positive("Selling price must be greater than 0"),
 });
 
 const saleAdditionalCostSchema = z.object({

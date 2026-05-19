@@ -122,6 +122,7 @@ const createProduct = async (data) => {
       sellingPrice: data.sellingPrice,
       minStock: data.minStock,
       stock: data.stock,
+      imageUrl: data.imageUrl ?? null,
     },
     include: {
       category: true,

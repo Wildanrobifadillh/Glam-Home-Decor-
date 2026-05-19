@@ -231,12 +231,23 @@ const getSaleAdditionalCostAmount = (sale) => {
   return sale.additionalCosts.reduce((total, cost) => total + cost.amount, 0);
 };
 
-const getSalesReport = async ({ startDate, endDate } = {}) => {
+const getSalesReport = async ({
+  startDate,
+  endDate,
+  paymentStatus,
+  paymentMethod,
+  status,
+  search,
+} = {}) => {
   const sales = await prisma.sale.findMany({
-    where: {
-      status: "COMPLETED",
-      ...buildTransactionDateWhere({ startDate, endDate }),
-    },
+    where: buildSalesExportWhere({
+      startDate,
+      endDate,
+      paymentStatus,
+      paymentMethod,
+      status,
+      search,
+    }),
     select: {
       id: true,
       saleNumber: true,
