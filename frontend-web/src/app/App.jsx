@@ -17,6 +17,8 @@ import PurchaseListPage from "../features/purchases/PurchaseListPage.jsx";
 import PurchaseCreatePage from "../features/purchases/PurchaseCreatePage.jsx";
 import PurchaseDetailPage from "../features/purchases/PurchaseDetailPage.jsx";
 import PurchaseReportPage from "../features/purchases/PurchaseReportPage.jsx";
+import SaleListPage from "../features/sales/SaleListPage.jsx";
+import SaleCreatePage from "../features/sales/SaleCreatePage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -50,6 +52,15 @@ function App() {
         />
 
         <Route
+          path="/sales/create"
+          element={
+            <ProtectedRoute>
+              <SaleCreatePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           element={
             <ProtectedRoute>
               <DashboardLayout />
@@ -69,7 +80,9 @@ function App() {
           <Route path="/purchases/create" element={<PurchaseCreatePage />} />
           <Route path="/purchases/report" element={<PurchaseReportPage />} />
           <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
-          <Route path="/sales" element={<PlaceholderPage title="Penjualan" />} />
+          <Route path="/sales" element={<SaleListPage />} />
+          <Route path="/sales/report" element={<PlaceholderPage title="Laporan Penjualan" />} />
+          <Route path="/sales/:id" element={<PlaceholderPage title="Detail Penjualan" />} />
           <Route path="/returns" element={<PlaceholderPage title="Retur" />} />
           <Route path="/receivables" element={<PlaceholderPage title="Piutang" />} />
           <Route path="/payables" element={<PlaceholderPage title="Hutang" />} />

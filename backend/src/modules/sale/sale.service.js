@@ -323,6 +323,8 @@ const createSale = async ({
   customerName,
   customerPhone,
   paidAmount,
+  cashReceivedAmount,
+  changeAmount,
   paymentMethod,
   cashBankAccountId,
   discountAmount,
@@ -450,14 +452,55 @@ const createSale = async ({
     }
 
     if (paidAmount > totalAmount) {
-      const error = new Error("Paid amount cannot exceed total amount");
-      error.status = 400;
-      throw error;
-    }
+    const error = new Error("Paid amount cannot exceed total amount");
+    error.status = 400;
+    throw error;
+  }
 
-    const remainingAmount = totalAmount - paidAmount;
-    const paymentStatus = getPaymentStatus(totalAmount, paidAmount);
-    const saleNumber = generateSaleNumber();
+  const normalizedCashReceivedAmount =
+    cashReceivedAmount !== undefined && cashReceivedAmount !== null
+      ? cashReceivedAmount
+      : paidAmount > 0
+        ? paidAmount
+        : null;
+
+  if (
+    normalizedCashReceivedAmount !== null &&
+    normalizedCashReceivedAmount < paidAmount
+  ) {
+    const error = new Error("Cash received amount cannot be less than paid amount");
+    error.status = 400;
+    throw error;
+  }
+
+  if (
+    normalizedCashReceivedAmount !== null &&
+    normalizedCashReceivedAmount > 0 &&
+    paidAmount <= 0
+  ) {
+    const error = new Error("Paid amount is required when cash received amount is greater than 0");
+    error.status = 400;
+    throw error;
+  }
+
+  const calculatedChangeAmount =
+    normalizedCashReceivedAmount !== null
+      ? normalizedCashReceivedAmount - paidAmount
+      : null;
+
+  if (
+    changeAmount !== undefined &&
+    changeAmount !== null &&
+    changeAmount !== calculatedChangeAmount
+  ) {
+    const error = new Error("Change amount does not match cash received amount");
+    error.status = 400;
+    throw error;
+  }
+
+  const remainingAmount = totalAmount - paidAmount;
+  const paymentStatus = getPaymentStatus(totalAmount, paidAmount);
+  const saleNumber = generateSaleNumber();
 
     const isReceivable = remainingAmount > 0;
     const needsOwnerApproval =
@@ -480,6 +523,8 @@ const createSale = async ({
         customerPhone: customerId ? customer.phone : customerPhone,
         totalAmount,
         paidAmount,
+        cashReceivedAmount: normalizedCashReceivedAmount,
+        changeAmount: calculatedChangeAmount,
         remainingAmount,
         discountAmount: normalizedDiscountAmount,
         taxAmount: normalizedTaxAmount,
@@ -1064,6 +1109,8 @@ const getSaleInvoicePreview = async (saleId) => {
     payment: {
       paymentMethod: sale.paymentMethod,
       paidAmount: sale.paidAmount,
+      cashReceivedAmount: sale.cashReceivedAmount,
+      changeAmount: sale.changeAmount,
       remainingAmount: sale.remainingAmount,
       paymentStatus: sale.paymentStatus,
       cashBankAccount: sale.cashBankAccount

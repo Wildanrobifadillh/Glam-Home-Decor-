@@ -55,6 +55,18 @@ const createSaleSchema = z
       .optional()
       .default(0),
 
+    cashReceivedAmount: z.coerce
+      .number()
+      .int("Cash received amount must be an integer")
+      .nonnegative("Cash received amount cannot be negative")
+      .optional(),
+
+    changeAmount: z.coerce
+      .number()
+      .int("Change amount must be an integer")
+      .nonnegative("Change amount cannot be negative")
+      .optional(),
+
     paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
 
     cashBankAccountId: z
