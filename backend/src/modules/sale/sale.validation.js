@@ -48,6 +48,8 @@ const createSaleSchema = z
 
     customerPhone: z.string().trim().optional(),
 
+    customerAddress: z.string().trim().optional(),
+
     paidAmount: z.coerce
       .number()
       .int("Paid amount must be an integer")

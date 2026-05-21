@@ -78,6 +78,7 @@ const dateTimeLabel = useMemo(() => {
   const [customerForm, setCustomerForm] = useState({
     customerName: "",
     customerPhone: "",
+    customerAddress: "",
     dueDate: "",
     note: "",
   });
@@ -458,6 +459,9 @@ const effectiveCashBankAccountId =
         ? undefined
         : customerForm.customerPhone.trim() || undefined,
       paidAmount,
+      customerAddress: selectedCustomerId
+        ? undefined
+        : customerForm.customerAddress.trim() || undefined,
       cashReceivedAmount:
         normalizedCashReceivedAmount > 0
           ? normalizedCashReceivedAmount
@@ -697,6 +701,17 @@ const effectiveCashBankAccountId =
                       onChange={handleCustomerChange}
                       placeholder="Opsional"
                       disabled={Boolean(selectedCustomer)}
+                    />
+                  </label>
+
+                  <label className="sale-customer-full">
+                    Alamat
+                    <input
+                      name="customerAddress"
+                      value={customerForm.customerAddress}
+                      onChange={handleCustomerChange}
+                      placeholder="Alamat pelanggan"
+                      disabled={Boolean(selectedCustomerId)}
                     />
                   </label>
                 </div>
