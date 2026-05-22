@@ -77,71 +77,85 @@ function SaleListPage() {
   }, [fetchSales]);
 
   const filteredSales = useMemo(() => {
-    const keyword = debouncedSearch.trim().toLowerCase();
+  const keyword = debouncedSearch.trim().toLowerCase();
 
-    return sales.filter((sale) => {
-      const matchesSearch = keyword
-        ? [
-            sale.saleNumber,
-            sale.invoiceNumber,
-            sale.customerName,
-            sale.customerPhone,
-            sale.customer?.name,
-            sale.customer?.phone,
-          ]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(keyword))
-        : true;
+  return sales.filter((sale) => {
+    const matchesSearch = keyword
+      ? [
+          sale.saleNumber,
+          sale.invoiceNumber,
+          sale.customerName,
+          sale.customerPhone,
+          sale.customer?.name,
+          sale.customer?.phone,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword))
+      : true;
 
-      const matchesDate = isDateInRange(
-        sale.createdAt,
-        filters.dateFrom,
-        filters.dateTo
-      );
-
-      const matchesPaymentStatus = filters.paymentStatus
-        ? sale.paymentStatus === filters.paymentStatus
-        : true;
-
-      const matchesSaleStatus = filters.saleStatus
-        ? sale.status === filters.saleStatus
-        : true;
-
-      return (
-        matchesSearch &&
-        matchesDate &&
-        matchesPaymentStatus &&
-        matchesSaleStatus
-      );
-    });
-  }, [
-    sales,
-    debouncedSearch,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.paymentStatus,
-    filters.saleStatus,
-  ]);
-
-  const summary = useMemo(() => {
-    return filteredSales.reduce(
-      (currentSummary, sale) => ({
-        saleCount: currentSummary.saleCount + 1,
-        totalAmount: currentSummary.totalAmount + Number(sale.totalAmount || 0),
-        totalPaidAmount:
-          currentSummary.totalPaidAmount + Number(sale.paidAmount || 0),
-        totalRemainingAmount:
-          currentSummary.totalRemainingAmount +
-          Number(sale.remainingAmount || 0),
-      }),
-      {
-        saleCount: 0,
-        totalAmount: 0,
-        totalPaidAmount: 0,
-        totalRemainingAmount: 0,
-      }
+    const matchesDate = isDateInRange(
+      sale.createdAt,
+      filters.dateFrom,
+      filters.dateTo
     );
-  }, [filteredSales]);
+
+    const matchesPaymentStatus = filters.paymentStatus
+      ? sale.paymentStatus === filters.paymentStatus
+      : true;
+
+    const isRejectedOrCancelledSale = ["REJECTED", "CANCELLED"].includes(
+      sale.status
+    );
+
+    const shouldHideFromPaymentFilter =
+      filters.paymentStatus &&
+      !filters.saleStatus &&
+      isRejectedOrCancelledSale;
+
+    const matchesSaleStatus = filters.saleStatus
+      ? sale.status === filters.saleStatus
+      : true;
+
+    return (
+      matchesSearch &&
+      matchesDate &&
+      matchesPaymentStatus &&
+      !shouldHideFromPaymentFilter &&
+      matchesSaleStatus
+    );
+  });
+}, [
+  sales,
+  debouncedSearch,
+  filters.dateFrom,
+  filters.dateTo,
+  filters.paymentStatus,
+  filters.saleStatus,
+]);
+
+  const financialSales = useMemo(() => {
+  return filteredSales.filter(
+    (sale) => !["REJECTED", "CANCELLED"].includes(sale.status)
+  );
+}, [filteredSales]);
+
+const summary = useMemo(() => {
+  return {
+    saleCount: filteredSales.length,
+    totalAmount: financialSales.reduce(
+      (total, sale) => total + Number(sale.totalAmount || 0),
+      0
+    ),
+    totalPaidAmount: financialSales.reduce(
+      (total, sale) => total + Number(sale.paidAmount || 0),
+      0
+    ),
+    totalRemainingAmount: financialSales.reduce(
+      (total, sale) => total + Number(sale.remainingAmount || 0),
+      0
+    ),
+  };
+}, [filteredSales, financialSales]);
 
   const totalSales = filteredSales.length;
   const totalPages = Math.max(Math.ceil(totalSales / ITEMS_PER_PAGE), 1);
@@ -347,19 +361,6 @@ function SaleListPage() {
             <option value="PARTIAL">Sebagian</option>
             <option value="UNPAID">Belum Dibayar</option>
             </Select>
-
-            <Select
-            name="saleStatus"
-            value={filters.saleStatus}
-            onChange={handleFilterChange}
-            >
-            <option value="">Semua Status Sale</option>
-            <option value="COMPLETED">Selesai</option>
-            <option value="PENDING_APPROVAL">Pending Approval</option>
-            <option value="REJECTED">Ditolak</option>
-            <option value="CANCELLED">Dibatalkan</option>
-            </Select>
-
             <Button variant="secondary" size="sm" onClick={fetchSales}>
             <RefreshCcw size={15} />
             Refresh

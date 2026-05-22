@@ -30,7 +30,7 @@ const getDefaultOperationalPreferencesData = () => ({
   defaultPayableDueDays: 14,
   defaultPaymentMethod: "CASH",
   defaultCashBankAccountId: null,
-  requireReceivableApproval: true,
+  requireReceivableApproval: false,
 });
 
 const addDays = (date, days) => {
@@ -504,12 +504,7 @@ const createSale = async ({
   const saleNumber = generateSaleNumber();
 
     const isReceivable = remainingAmount > 0;
-    const needsOwnerApproval =
-      isReceivable &&
-      operationalPreference.requireReceivableApproval &&
-      createdByRole !== "OWNER";
-
-    const saleStatus = needsOwnerApproval ? "PENDING_APPROVAL" : "COMPLETED";
+    const saleStatus = "COMPLETED";
 
     const saleDueDate = isReceivable
       ? dueDate ||
@@ -553,23 +548,21 @@ const createSale = async ({
       },
     });
 
-    if (saleStatus === "COMPLETED") {
-      await createSaleStockHistories({
-        tx,
-        sale,
-        items,
-        createdById,
-      });
+    await createSaleStockHistories({
+      tx,
+      sale,
+      items,
+      createdById,
+    });
 
-      await createSaleJournal({
-        tx,
-        sale,
-        saleItems: saleItemsData,
-        cashBankAccountId,
-        paymentMethod,
-        createdById,
-      });
-    }
+    await createSaleJournal({
+      tx,
+      sale,
+      saleItems: saleItemsData,
+      cashBankAccountId,
+      paymentMethod,
+      createdById,
+    });
 
     return tx.sale.findUnique({
       where: {

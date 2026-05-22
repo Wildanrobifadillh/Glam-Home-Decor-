@@ -14,12 +14,15 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+
 import Button from "../../components/ui/Button";
+import { createPortal } from "react-dom";
 import { cashBankApi } from "../cash-bank/cashBank.api";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { saleApi } from "./sale.api";
+
 
 function SaleDetailPage() {
   const { id } = useParams();
@@ -128,6 +131,9 @@ function SaleDetailPage() {
   const discountAmount = Number(sale?.discountAmount || 0);
   const taxAmount = Number(sale?.taxAmount || 0);
 
+  const canPayReceivable =
+    remainingAmount > 0 && sale?.status === "COMPLETED";
+
   const itemSubtotal = useMemo(() => {
     return items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
   }, [items]);
@@ -222,20 +228,27 @@ function SaleDetailPage() {
     };
 
   const handleOpenPaymentModal = () => {
-    setPaymentForm({
-      amount: remainingAmount ? String(remainingAmount) : "",
-      paymentMethod: "CASH",
-      cashBankAccountId: getDefaultCashBankAccountId(
-        activeCashBankAccounts,
-        "CASH"
-      ),
-      note: "",
-    });
+  if (!canPayReceivable) {
+    setErrorMessage(
+      "Transaksi belum selesai, ditolak, atau dibatalkan tidak bisa dibayar."
+    );
+    return;
+  }
 
-    setErrorMessage("");
-    setSuccessMessage("");
-    setIsPaymentModalOpen(true);
-  };
+  setPaymentForm({
+    amount: remainingAmount ? String(remainingAmount) : "",
+    paymentMethod: "CASH",
+    cashBankAccountId: getDefaultCashBankAccountId(
+      activeCashBankAccounts,
+      "CASH"
+    ),
+    note: "",
+  });
+
+  setErrorMessage("");
+  setSuccessMessage("");
+  setIsPaymentModalOpen(true);
+};
 
   const handlePaymentMethodChange = (event) => {
     const nextPaymentMethod = event.target.value;
@@ -251,9 +264,16 @@ function SaleDetailPage() {
   };
 
   const handlePaymentSubmit = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
 
-    const amount = toNumber(paymentForm.amount);
+  if (!canPayReceivable) {
+    setErrorMessage(
+      "Transaksi belum selesai, ditolak, atau dibatalkan tidak bisa dibayar."
+    );
+    return;
+  }
+
+  const amount = toNumber(paymentForm.amount);
 
     if (amount <= 0) {
       setErrorMessage("Nominal pembayaran wajib lebih dari 0.");
@@ -332,19 +352,24 @@ function SaleDetailPage() {
             </span>
 
             <div className="sale-detail-main-actions">
-            <Button variant="secondary" onClick={() => navigate("/sales")}>
+              <Button
+                className="sale-detail-back-button"
+                variant="secondary"
+                onClick={() => navigate("/sales")}
+              >
                 <ArrowLeft size={16} />
                 Kembali
-            </Button>
+              </Button>
 
-            <Button
+              <Button
+                className="sale-detail-refresh-button"
                 variant="secondary"
                 onClick={handleRefresh}
                 disabled={isActionLoading}
-            >
+              >
                 <RefreshCcw size={16} />
                 Refresh
-            </Button>
+              </Button>
             </div>
         </div>
 
@@ -538,7 +563,7 @@ function SaleDetailPage() {
               strong
             />
 
-            {remainingAmount > 0 ? (
+            {canPayReceivable ? (
               <Button
                 className="sale-detail-pay-button"
                 variant="primary"
@@ -548,7 +573,7 @@ function SaleDetailPage() {
                 Bayar Piutang
               </Button>
             ) : null}
-          </div>
+                      </div>
 
           <div className="sale-detail-card">
             <SectionTitle
@@ -602,109 +627,108 @@ function SaleDetailPage() {
         </aside>
       </div>
 
-      {isPaymentModalOpen ? (
-        <div className="sale-detail-modal-backdrop">
-          <form className="sale-detail-modal" onSubmit={handlePaymentSubmit}>
-            <div className="sale-detail-modal-header">
-              <div>
-                <h2>Bayar Piutang</h2>
-                <p>Sisa piutang: {formatCurrency(remainingAmount)}</p>
-              </div>
+      {isPaymentModalOpen
+  ? createPortal(
+      <div className="sale-detail-modal-backdrop">
+        <form className="sale-detail-modal" onSubmit={handlePaymentSubmit}>
+          <div className="sale-detail-modal-header">
+            <div>
+              <h2>Bayar Piutang</h2>
+              <p>Sisa piutang: {formatCurrency(remainingAmount)}</p>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => setIsPaymentModalOpen(false)}
+            <button
+              type="button"
+              onClick={() => setIsPaymentModalOpen(false)}
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="sale-detail-modal-body">
+            <label>
+              Nominal Bayar
+              <input
+                value={formatInputCurrency(paymentForm.amount)}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    amount: toNumber(event.target.value),
+                  }))
+                }
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </label>
+
+            <label>
+              Metode
+              <select
+                value={paymentForm.paymentMethod}
+                onChange={handlePaymentMethodChange}
               >
-                ×
-              </button>
-            </div>
+                <option value="CASH">Tunai</option>
+                <option value="TRANSFER">Transfer</option>
+              </select>
+            </label>
 
-            <div className="sale-detail-modal-body">
-              <label>
-                Nominal Bayar
-                <input
-                  value={formatInputCurrency(paymentForm.amount)}
-                  onChange={(event) =>
-                    setPaymentForm((current) => ({
-                      ...current,
-                      amount: toNumber(event.target.value),
-                    }))
-                  }
-                  inputMode="numeric"
-                  placeholder="0"
-                />
-              </label>
-
-              <label>
-                Metode
-                <select
-                  value={paymentForm.paymentMethod}
-                  onChange={handlePaymentMethodChange}
-                >
-                  <option value="CASH">Tunai</option>
-                  <option value="TRANSFER">Transfer</option>
-                </select>
-              </label>
-
-              <label className="is-full">
-                Akun Kas/Bank
-                <select
-                  value={effectiveCashBankAccountId}
-                  onChange={(event) =>
-                    setPaymentForm((current) => ({
-                      ...current,
-                      cashBankAccountId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Pilih akun kas/bank</option>
-                  {activeCashBankAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name ||
-                        account.bankName ||
-                        account.accountNumber ||
-                        "-"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="is-full">
-                Catatan
-                <input
-                  value={paymentForm.note}
-                  onChange={(event) =>
-                    setPaymentForm((current) => ({
-                      ...current,
-                      note: event.target.value,
-                    }))
-                  }
-                  placeholder="Opsional"
-                />
-              </label>
-            </div>
-
-            <div className="sale-detail-modal-footer">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setIsPaymentModalOpen(false)}
+            <label className="is-full">
+              Akun Kas/Bank
+              <select
+                value={effectiveCashBankAccountId}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    cashBankAccountId: event.target.value,
+                  }))
+                }
               >
-                Batal
-              </Button>
+                <option value="">Pilih akun kas/bank</option>
+                {activeCashBankAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name || account.bankName || account.accountNumber || "-"}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-              <Button type="submit" variant="primary" disabled={isActionLoading}>
-                {isActionLoading ? (
-                  <Loader2 size={16} />
-                ) : (
-                  <WalletCards size={16} />
-                )}
-                Simpan Pembayaran
-              </Button>
-            </div>
-          </form>
-        </div>
-      ) : null}
+            <label className="is-full">
+              Catatan
+              <input
+                value={paymentForm.note}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    note: event.target.value,
+                  }))
+                }
+                placeholder="Opsional"
+              />
+            </label>
+          </div>
+
+          <div className="sale-detail-modal-footer">
+            <button
+              type="button"
+              className="sale-detail-modal-cancel"
+              onClick={() => setIsPaymentModalOpen(false)}
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              className="sale-detail-modal-submit"
+              disabled={isActionLoading}
+            >
+              Simpan Pembayaran
+            </button>
+          </div>
+        </form>
+      </div>,
+      document.body
+    )
+  : null}
     </div>
   );
 }
