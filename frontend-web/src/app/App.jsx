@@ -24,6 +24,8 @@ import SaleReportPage from "../features/sales/SaleReportPage.jsx";
 import ReturnListPage from "../features/returns/ReturnListPage.jsx";
 import SaleReturnCreatePage from "../features/returns/SaleReturnCreatePage.jsx";
 import PurchaseReturnCreatePage from "../features/returns/PurchaseReturnCreatePage.jsx";
+import ReceivableListPage from "../features/receivables/ReceivableListPage.jsx";
+import PayableListPage from "../features/payables/PayableListPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -91,8 +93,8 @@ function App() {
           <Route path="/returns" element={<ReturnListPage />} />
           <Route path="/returns/sales/create" element={<SaleReturnCreatePage />} />
           <Route path="/returns/purchases/create" element={<PurchaseReturnCreatePage />} />
-          <Route path="/receivables" element={<PlaceholderPage title="Piutang" />} />
-          <Route path="/payables" element={<PlaceholderPage title="Hutang" />} />
+          <Route path="/receivables" element={<ReceivableListPage />} />
+          <Route path="/payables" element={<PayableListPage />} />
           <Route path="/payroll" element={<PlaceholderPage title="Payroll" />} />
           <Route path="/journal-entries" element={<PlaceholderPage title="Jurnal" />} />
           <Route path="/accounting" element={<PlaceholderPage title="Akun Perkiraan" />} />
