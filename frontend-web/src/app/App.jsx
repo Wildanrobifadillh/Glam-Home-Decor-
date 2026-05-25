@@ -21,6 +21,9 @@ import SaleListPage from "../features/sales/SaleListPage.jsx";
 import SaleCreatePage from "../features/sales/SaleCreatePage.jsx";
 import SaleDetailPage from "../features/sales/SaleDetailPage.jsx";
 import SaleReportPage from "../features/sales/SaleReportPage.jsx";
+import ReturnListPage from "../features/returns/ReturnListPage.jsx";
+import SaleReturnCreatePage from "../features/returns/SaleReturnCreatePage.jsx";
+import PurchaseReturnCreatePage from "../features/returns/PurchaseReturnCreatePage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -85,7 +88,9 @@ function App() {
           <Route path="/sales" element={<SaleListPage />} />
           <Route path="/sales/report" element={<SaleReportPage />} />
           <Route path="/sales/:id" element={<SaleDetailPage />} />
-          <Route path="/returns" element={<PlaceholderPage title="Retur" />} />
+          <Route path="/returns" element={<ReturnListPage />} />
+          <Route path="/returns/sales/create" element={<SaleReturnCreatePage />} />
+          <Route path="/returns/purchases/create" element={<PurchaseReturnCreatePage />} />
           <Route path="/receivables" element={<PlaceholderPage title="Piutang" />} />
           <Route path="/payables" element={<PlaceholderPage title="Hutang" />} />
           <Route path="/payroll" element={<PlaceholderPage title="Payroll" />} />
