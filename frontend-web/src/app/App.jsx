@@ -26,6 +26,11 @@ import SaleReturnCreatePage from "../features/returns/SaleReturnCreatePage.jsx";
 import PurchaseReturnCreatePage from "../features/returns/PurchaseReturnCreatePage.jsx";
 import ReceivableListPage from "../features/receivables/ReceivableListPage.jsx";
 import PayableListPage from "../features/payables/PayableListPage.jsx";
+import CashBankListPage from "../features/cash-bank/CashBankListPage.jsx";
+import ExpenseListPage from "../features/expenses/ExpenseListPage.jsx";
+import AccountListPage from "../features/accounting/AccountListPage.jsx";
+import JournalEntryListPage from "../features/journal-entries/JournalEntryListPage.jsx";
+import ReportsPage from "../features/reports/ReportsPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -95,10 +100,12 @@ function App() {
           <Route path="/returns/purchases/create" element={<PurchaseReturnCreatePage />} />
           <Route path="/receivables" element={<ReceivableListPage />} />
           <Route path="/payables" element={<PayableListPage />} />
+          <Route path="/cash-bank-accounts" element={<CashBankListPage />} />
+          <Route path="/expenses" element={<ExpenseListPage />} />
           <Route path="/payroll" element={<PlaceholderPage title="Payroll" />} />
-          <Route path="/journal-entries" element={<PlaceholderPage title="Jurnal" />} />
-          <Route path="/accounting" element={<PlaceholderPage title="Akun Perkiraan" />} />
-          <Route path="/reports" element={<PlaceholderPage title="Laporan" />} />
+          <Route path="/journal-entries" element={<JournalEntryListPage />} />
+          <Route path="/accounting" element={<AccountListPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<PlaceholderPage title="Pengaturan" />} />
         </Route>
 

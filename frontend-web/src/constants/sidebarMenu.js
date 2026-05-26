@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   ClipboardList,
   CreditCard,
+  Banknote,
   FileBarChart,
   Landmark,
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  WalletCards,
 } from "lucide-react";
 
 export const sidebarGroups = [
@@ -125,6 +127,18 @@ export const sidebarGroups = [
         icon: ClipboardList,
       },
       {
+        label: "Kas/Bank",
+        path: "/cash-bank-accounts",
+        moduleKey: "cash_bank_accounts",
+        icon: WalletCards,
+      },
+      {
+        label: "Expense",
+        path: "/expenses",
+        moduleKey: "expenses",
+        icon: Banknote,
+      },
+      {
         label: "Payroll",
         path: "/payroll",
         moduleKey: "payroll",
@@ -188,6 +202,7 @@ export const roleDefaultModuleKeys = {
     "purchase_returns",
     "receivables",
     "payables",
+    "cash_bank_accounts",
     "expenses",
     "payroll",
     "accounting",

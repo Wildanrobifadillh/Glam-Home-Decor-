@@ -4,10 +4,20 @@ function Pagination({
   page = 1,
   totalPages = 1,
   totalItems = 0,
+  startItem = 0,
+  endItem = 0,
+  pageSize = 15,
   onPageChange,
 }) {
   const canGoPrevious = page > 1;
   const canGoNext = page < totalPages;
+
+  if (totalItems <= pageSize) {
+    return null;
+  }
+
+  const safeStartItem = startItem || 1;
+  const safeEndItem = endItem || Math.min(page * pageSize, totalItems);
 
   const handlePrevious = () => {
     if (canGoPrevious && onPageChange) {
@@ -24,7 +34,8 @@ function Pagination({
   return (
     <div className="ui-pagination">
       <p>
-        Total data: <strong>{totalItems}</strong>
+        Menampilkan <strong>{safeStartItem}</strong> -{" "}
+        <strong>{safeEndItem}</strong> dari <strong>{totalItems}</strong> data
       </p>
 
       <div className="ui-pagination-actions">
