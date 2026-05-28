@@ -261,3 +261,16 @@ export const getSidebarFooterItemsByRole = (role) => {
     allowedModuleKeys.includes(item.moduleKey)
   );
 };
+
+export const getSidebarGroupsByModuleKeys = (moduleKeys = []) => {
+  return sidebarGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => moduleKeys.includes(item.moduleKey)),
+    }))
+    .filter((group) => group.items.length > 0);
+};
+
+export const getSidebarFooterItemsByModuleKeys = (moduleKeys = []) => {
+  return sidebarFooterItems.filter((item) => moduleKeys.includes(item.moduleKey));
+};

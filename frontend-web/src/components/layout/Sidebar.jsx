@@ -1,19 +1,74 @@
 import { LogOut, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 import logoGlamHd from "../../assets/images/logo-glam-hd.png";
 import {
+  getAllowedModuleKeysByRole,
+  getSidebarFooterItemsByModuleKeys,
   getSidebarFooterItemsByRole,
+  getSidebarGroupsByModuleKeys,
   getSidebarGroupsByRole,
 } from "../../constants/sidebarMenu";
 import { authStore } from "../../features/auth/auth.store";
+import { settingsApi } from "../../features/settings/settings.api";
 
 function Sidebar({ user }) {
   const [search, setSearch] = useState("");
+  const [permissionModuleKeys, setPermissionModuleKeys] = useState(null);
 
-  const groups = getSidebarGroupsByRole(user?.role);
-  const footerItems = getSidebarFooterItemsByRole(user?.role);
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchMyPermissions = async () => {
+      if (!user?.role) {
+        return;
+      }
+
+      if (user.role === "OWNER") {
+        setPermissionModuleKeys(getAllowedModuleKeysByRole(user.role));
+        return;
+      }
+
+      try {
+        const response = await settingsApi.getMyPermissions();
+        const responseData = response.data?.data || response.data;
+        const myPermissions =
+          responseData?.myPermissions || responseData?.rolePermissions || responseData;
+
+        const allowedModuleKeys =
+          myPermissions?.permissions
+            ?.filter((permission) => permission.canAccess)
+            .map((permission) => permission.key) || [];
+
+        if (isMounted) {
+          setPermissionModuleKeys(
+            allowedModuleKeys.length > 0
+              ? allowedModuleKeys
+              : getAllowedModuleKeysByRole(user.role)
+          );
+        }
+      } catch {
+        if (isMounted) {
+          setPermissionModuleKeys(getAllowedModuleKeysByRole(user.role));
+        }
+      }
+    };
+
+    fetchMyPermissions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.role]);
+
+  const groups = permissionModuleKeys
+    ? getSidebarGroupsByModuleKeys(permissionModuleKeys)
+    : getSidebarGroupsByRole(user?.role);
+
+  const footerItems = permissionModuleKeys
+    ? getSidebarFooterItemsByModuleKeys(permissionModuleKeys)
+    : getSidebarFooterItemsByRole(user?.role);
 
   const visibleGroups = useMemo(() => {
     const keyword = search.trim().toLowerCase();

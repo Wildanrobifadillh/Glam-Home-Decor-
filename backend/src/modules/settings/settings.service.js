@@ -792,6 +792,11 @@ const SETTINGS_MODULES = [
     group: "Keuangan",
   },
   {
+    key: "cash_bank_accounts",
+    label: "Kas/Bank",
+    group: "Keuangan",
+  },
+  {
     key: "expenses",
     label: "Beban Operasional",
     group: "Keuangan",
@@ -837,6 +842,7 @@ const DEFAULT_ROLE_MODULES = {
     "purchase_returns",
     "receivables",
     "payables",
+    "cash_bank_accounts",
     "expenses",
     "reports",
   ],

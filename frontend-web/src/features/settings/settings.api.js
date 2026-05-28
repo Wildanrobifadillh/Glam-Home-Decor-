@@ -62,6 +62,10 @@ export const settingsApi = {
     return apiClient.get(`/settings/role-permissions/${role}`);
   },
 
+  getMyPermissions() {
+    return apiClient.get("/settings/my-permissions");
+  },
+
   updateRolePermissions(role, moduleKeys) {
     return apiClient.put(`/settings/role-permissions/${role}`, {
       moduleKeys,
