@@ -31,6 +31,7 @@ import ExpenseListPage from "../features/expenses/ExpenseListPage.jsx";
 import AccountListPage from "../features/accounting/AccountListPage.jsx";
 import JournalEntryListPage from "../features/journal-entries/JournalEntryListPage.jsx";
 import ReportsPage from "../features/reports/ReportsPage.jsx";
+import PayrollListPage from "../features/payroll/PayrollListPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -102,7 +103,7 @@ function App() {
           <Route path="/payables" element={<PayableListPage />} />
           <Route path="/cash-bank-accounts" element={<CashBankListPage />} />
           <Route path="/expenses" element={<ExpenseListPage />} />
-          <Route path="/payroll" element={<PlaceholderPage title="Payroll" />} />
+          <Route path="/payroll" element={<PayrollListPage />} />
           <Route path="/journal-entries" element={<JournalEntryListPage />} />
           <Route path="/accounting" element={<AccountListPage />} />
           <Route path="/reports" element={<ReportsPage />} />
