@@ -5,7 +5,6 @@ import LoginPage from "../features/auth/LoginPage.jsx";
 import { authStore } from "../features/auth/auth.store.js";
 import DashboardPage from "../features/dashboard/DashboardPage.jsx";
 import CategoryListPage from "../features/categories/CategoryListPage.jsx";
-import PlaceholderPage from "../features/dashboard/PlaceholderPage.jsx";
 import SupplierListPage from "../features/suppliers/SupplierListPage.jsx";
 import ProductListPage from "../features/products/ProductListPage.jsx";
 import CustomerListPage from "../features/customers/CustomerListPage.jsx";
@@ -32,6 +31,7 @@ import AccountListPage from "../features/accounting/AccountListPage.jsx";
 import JournalEntryListPage from "../features/journal-entries/JournalEntryListPage.jsx";
 import ReportsPage from "../features/reports/ReportsPage.jsx";
 import PayrollListPage from "../features/payroll/PayrollListPage.jsx";
+import SettingsPage from "../features/settings/SettingsPage.jsx";
 
 function ProtectedRoute({ children }) {
   if (!authStore.isAuthenticated()) {
@@ -107,7 +107,7 @@ function App() {
           <Route path="/journal-entries" element={<JournalEntryListPage />} />
           <Route path="/accounting" element={<AccountListPage />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/settings" element={<PlaceholderPage title="Pengaturan" />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
