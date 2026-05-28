@@ -194,11 +194,7 @@ function getRoleLabel(role) {
 }
 
 function getDisplayName(user) {
-  if (user?.role === "OWNER") {
-    return "Zaid Ismatul Fawaid";
-  }
-
-  return user?.name || "User";
+  return user?.name || user?.username || "User";
 }
 
 export default Sidebar;
