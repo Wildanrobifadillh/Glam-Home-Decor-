@@ -50,4 +50,55 @@ export const settingsApi = {
   updateDocumentSetting(payload) {
     return apiClient.put("/settings/document", payload);
   },
+    getModules() {
+    return apiClient.get("/settings/modules");
+  },
+
+  getAllRolePermissions() {
+    return apiClient.get("/settings/role-permissions");
+  },
+
+  getRolePermissionsByRole(role) {
+    return apiClient.get(`/settings/role-permissions/${role}`);
+  },
+
+  updateRolePermissions(role, moduleKeys) {
+    return apiClient.put(`/settings/role-permissions/${role}`, {
+      moduleKeys,
+    });
+  },
+
+  getUsers() {
+  return apiClient.get("/settings/users");
+},
+
+getUserById(id) {
+  return apiClient.get(`/settings/users/${id}`);
+},
+
+createUser(payload) {
+  return apiClient.post("/settings/users", payload);
+},
+
+updateUser(id, payload) {
+  return apiClient.put(`/settings/users/${id}`, payload);
+},
+
+updateUserRole(id, role) {
+  return apiClient.patch(`/settings/users/${id}/role`, {
+    role,
+  });
+},
+
+updateUserStatus(id, status) {
+  return apiClient.patch(`/settings/users/${id}/status`, {
+    status,
+  });
+},
+
+resetUserPassword(id, password) {
+  return apiClient.patch(`/settings/users/${id}/reset-password`, {
+    password,
+  });
+},
 };

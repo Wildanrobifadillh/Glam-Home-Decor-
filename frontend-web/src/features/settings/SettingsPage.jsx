@@ -4,13 +4,18 @@ import {
   CheckCircle2,
   CreditCard,
   FileText,
+  KeyRound,
   Loader2,
+  Pencil,
   Plus,
+  Power,
   RefreshCcw,
   Save,
   Settings2,
+  UsersRound,
   ShieldCheck,
   Star,
+  UserPlus,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -47,6 +52,16 @@ const tabs = [
     key: "document",
     label: "Dokumen & PDF",
     icon: FileText,
+    },
+    {
+    key: "permissions",
+    label: "Hak Akses",
+    icon: UsersRound,
+    },
+    {
+    key: "users",
+    label: "User & Password",
+    icon: UserPlus,
     },
 ];
 
@@ -113,6 +128,17 @@ const initialBankForm = {
   isDefaultForInvoice: false,
 };
 
+const initialUserForm = {
+  name: "",
+  username: "",
+  password: "",
+  role: "ADMIN_STAFF",
+};
+
+const initialResetPasswordForm = {
+  password: "",
+};
+
 function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -124,6 +150,20 @@ function SettingsPage() {
   const [storeBankAccounts, setStoreBankAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [cashBankAccounts, setCashBankAccounts] = useState([]);
+
+  const [modules, setModules] = useState([]);
+  const [rolePermissions, setRolePermissions] = useState([]);
+  const [selectedPermissionRole, setSelectedPermissionRole] =
+    useState("ADMIN_STAFF");
+  const [users, setUsers] = useState([]);
+  const [userForm, setUserForm] = useState(initialUserForm);
+  const [resetPasswordForm, setResetPasswordForm] = useState(
+    initialResetPasswordForm
+    );
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] =
+    useState(false);
 
   const [bankForm, setBankForm] = useState(initialBankForm);
   const [selectedBankAccount, setSelectedBankAccount] = useState(null);
@@ -143,8 +183,36 @@ function SettingsPage() {
   }, [accounts]);
 
   const activeCashBankAccounts = useMemo(() => {
-    return cashBankAccounts.filter((account) => account.status === "ACTIVE");
-  }, [cashBankAccounts]);
+        return cashBankAccounts.filter((account) => account.status === "ACTIVE");
+    }, [cashBankAccounts]);
+
+    const selectedPermissionData = useMemo(() => {
+    return rolePermissions.find(
+        (permission) => permission.role === selectedPermissionRole
+    );
+    }, [rolePermissions, selectedPermissionRole]);
+
+    const selectedModuleKeys = useMemo(() => {
+    return new Set(
+        selectedPermissionData?.permissions
+        ?.filter((permission) => permission.canAccess)
+        .map((permission) => permission.key) || []
+    );
+    }, [selectedPermissionData]);
+
+    const groupedModules = useMemo(() => {
+    return modules.reduce((groups, moduleItem) => {
+        const groupName = moduleItem.group || "Lainnya";
+
+        if (!groups[groupName]) {
+        groups[groupName] = [];
+        }
+
+        groups[groupName].push(moduleItem);
+
+        return groups;
+    }, {});
+    }, [modules]);
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
@@ -158,14 +226,20 @@ function SettingsPage() {
         documentResponse,
         accountResponse,
         cashBankResponse,
-      ] = await Promise.all([
+        modulesResponse,
+        rolePermissionsResponse,
+        usersResponse,
+        ] = await Promise.all([
         settingsApi.getStoreProfile(),
         settingsApi.getStoreBankAccounts(),
         settingsApi.getOperationalPreferences(),
         settingsApi.getDocumentSetting(),
         accountApi.getList(),
         cashBankApi.getList(),
-      ]);
+        settingsApi.getModules(),
+        settingsApi.getAllRolePermissions(),
+        settingsApi.getUsers(),
+        ]);
 
       const storeProfileData =
         storeProfileResponse.data?.data?.storeProfile ||
@@ -203,6 +277,24 @@ function SettingsPage() {
         cashBankResponse.data?.data ||
         [];
 
+      const modulesData =
+        modulesResponse.data?.data?.modules ||
+        modulesResponse.data?.modules ||
+        modulesResponse.data?.data ||
+        [];
+
+        const rolePermissionsData =
+        rolePermissionsResponse.data?.data?.roles ||
+        rolePermissionsResponse.data?.roles ||
+        rolePermissionsResponse.data?.data?.roles ||
+        [];
+        
+        const usersData =
+        usersResponse.data?.data?.users ||
+        usersResponse.data?.users ||
+        usersResponse.data?.data ||
+        [];
+
       setStoreProfile({
         ...initialStoreProfile,
         ...(storeProfileData || {}),
@@ -224,6 +316,11 @@ function SettingsPage() {
 
       setAccounts(Array.isArray(accountData) ? accountData : []);
       setCashBankAccounts(Array.isArray(cashBankData) ? cashBankData : []);
+      setModules(Array.isArray(modulesData) ? modulesData : []);
+        setRolePermissions(
+        Array.isArray(rolePermissionsData) ? rolePermissionsData : []
+        );
+        setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -276,6 +373,239 @@ function SettingsPage() {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  const handleTogglePermission = (moduleKey) => {
+    setRolePermissions((current) =>
+        current.map((rolePermission) => {
+        if (rolePermission.role !== selectedPermissionRole) {
+            return rolePermission;
+        }
+
+        return {
+            ...rolePermission,
+            permissions: rolePermission.permissions.map((permission) =>
+            permission.key === moduleKey
+                ? {
+                    ...permission,
+                    canAccess: !permission.canAccess,
+                }
+                : permission
+            ),
+        };
+        })
+    );
+    };
+
+    const handleSaveRolePermissions = () => {
+    setConfirmConfig({
+        title: "Simpan hak akses role?",
+        description:
+        "Akses menu untuk role ini akan diperbarui. OWNER tetap memiliki akses penuh.",
+        confirmLabel: "Ya, Simpan",
+        action: async () => {
+        const moduleKeys =
+            selectedPermissionData?.permissions
+            ?.filter((permission) => permission.canAccess)
+            .map((permission) => permission.key) || [];
+
+        const response = await settingsApi.updateRolePermissions(
+            selectedPermissionRole,
+            moduleKeys
+        );
+
+        const updated =
+            response.data?.data?.rolePermissions ||
+            response.data?.rolePermissions ||
+            response.data?.data;
+
+        setRolePermissions((current) =>
+            current.map((rolePermission) =>
+            rolePermission.role === selectedPermissionRole
+                ? updated
+                : rolePermission
+            )
+        );
+
+        setSuccessMessage("Hak akses role berhasil disimpan.");
+        },
+    });
+    };
+
+    const handleUserFormChange = (event) => {
+  const { name, value } = event.target;
+
+  setUserForm((current) => ({
+    ...current,
+    [name]: value,
+  }));
+};
+
+const handleOpenCreateUser = () => {
+  setSelectedUser(null);
+  setUserForm(initialUserForm);
+  setErrorMessage("");
+  setIsUserModalOpen(true);
+};
+
+const handleOpenEditUser = (row) => {
+  setSelectedUser(row);
+  setUserForm({
+    name: row.name || "",
+    username: row.username || "",
+    password: "",
+    role: row.role || "ADMIN_STAFF",
+  });
+  setErrorMessage("");
+  setIsUserModalOpen(true);
+};
+
+const handleCloseUserModal = () => {
+  if (isSubmitting) {
+    return;
+  }
+
+  setIsUserModalOpen(false);
+  setSelectedUser(null);
+  setUserForm(initialUserForm);
+};
+
+const handleSubmitUser = (event) => {
+  event.preventDefault();
+
+  const name = userForm.name.trim();
+  const username = userForm.username.trim();
+  const password = userForm.password.trim();
+
+  if (!name) {
+    setErrorMessage("Nama user wajib diisi.");
+    return;
+  }
+
+  if (username.length < 3) {
+    setErrorMessage("Username minimal 3 karakter.");
+    return;
+  }
+
+  if (!selectedUser && password.length < 6) {
+    setErrorMessage("Password minimal 6 karakter.");
+    return;
+  }
+
+  setErrorMessage("");
+
+  setConfirmConfig({
+    title: selectedUser ? "Simpan perubahan user?" : "Tambah user baru?",
+    description: selectedUser
+      ? "Nama, username, dan role user akan diperbarui."
+      : "User baru akan dibuat dan bisa login ke sistem.",
+    confirmLabel: selectedUser ? "Ya, Simpan" : "Ya, Tambah",
+    action: async () => {
+      if (selectedUser) {
+        await settingsApi.updateUser(selectedUser.id, {
+          name,
+          username,
+        });
+
+        if (selectedUser.role !== userForm.role) {
+          await settingsApi.updateUserRole(selectedUser.id, userForm.role);
+        }
+
+        setSuccessMessage("User berhasil diperbarui.");
+      } else {
+        await settingsApi.createUser({
+          name,
+          username,
+          password,
+          role: userForm.role,
+        });
+
+        setSuccessMessage("User berhasil ditambahkan.");
+      }
+
+      await fetchSettings();
+      setIsUserModalOpen(false);
+      setSelectedUser(null);
+      setUserForm(initialUserForm);
+    },
+  });
+};
+
+const handleToggleUserStatus = (row) => {
+  const nextStatus = row.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+  setConfirmConfig({
+    title: nextStatus === "ACTIVE" ? "Aktifkan user?" : "Nonaktifkan user?",
+    description:
+      nextStatus === "ACTIVE"
+        ? "User akan bisa login kembali ke sistem."
+        : "User tidak akan bisa login ke sistem.",
+    confirmLabel: nextStatus === "ACTIVE" ? "Ya, Aktifkan" : "Ya, Nonaktifkan",
+    action: async () => {
+      await settingsApi.updateUserStatus(row.id, nextStatus);
+      await fetchSettings();
+
+      setSuccessMessage(
+        nextStatus === "ACTIVE"
+          ? "User berhasil diaktifkan."
+          : "User berhasil dinonaktifkan."
+      );
+    },
+  });
+};
+
+const handleOpenResetPassword = (row) => {
+  setSelectedUser(row);
+  setResetPasswordForm(initialResetPasswordForm);
+  setErrorMessage("");
+  setIsResetPasswordModalOpen(true);
+};
+
+const handleCloseResetPasswordModal = () => {
+  if (isSubmitting) {
+    return;
+  }
+
+  setIsResetPasswordModalOpen(false);
+  setSelectedUser(null);
+  setResetPasswordForm(initialResetPasswordForm);
+};
+
+const handleResetPasswordFormChange = (event) => {
+  const { name, value } = event.target;
+
+  setResetPasswordForm((current) => ({
+    ...current,
+    [name]: value,
+  }));
+};
+
+const handleSubmitResetPassword = (event) => {
+  event.preventDefault();
+
+  const password = resetPasswordForm.password.trim();
+
+  if (password.length < 6) {
+    setErrorMessage("Password baru minimal 6 karakter.");
+    return;
+  }
+
+  setErrorMessage("");
+
+  setConfirmConfig({
+    title: "Reset password user?",
+    description: `Password untuk ${selectedUser?.name || "user"} akan diganti.`,
+    confirmLabel: "Ya, Reset",
+    action: async () => {
+      await settingsApi.resetUserPassword(selectedUser.id, password);
+      await fetchSettings();
+
+      setIsResetPasswordModalOpen(false);
+      setSelectedUser(null);
+      setResetPasswordForm(initialResetPasswordForm);
+      setSuccessMessage("Password user berhasil direset.");
+    },
+  });
+};
 
   const handleSaveStoreProfile = () => {
     setConfirmConfig({
@@ -610,6 +940,97 @@ function SettingsPage() {
     [handleOpenEditBank, handleSetDefaultBank, handleToggleBankStatus],
   );
 
+  const userColumns = [
+  {
+    key: "name",
+    label: "Nama",
+    width: "220px",
+    align: "center",
+    render: (row) => (
+      <div className="table-main-text is-center">
+        <strong>{row.name || "-"}</strong>
+        <span>{row.employee?.position || "User sistem"}</span>
+      </div>
+    ),
+  },
+  {
+    key: "username",
+    label: "Username",
+    width: "180px",
+    align: "center",
+    render: (row) => <strong>{row.username || "-"}</strong>,
+  },
+  {
+    key: "role",
+    label: "Role",
+    width: "160px",
+    align: "center",
+    render: (row) => <Badge tone="info">{getRoleLabel(row.role)}</Badge>,
+  },
+  {
+    key: "employee",
+    label: "Karyawan Terhubung",
+    width: "220px",
+    align: "center",
+    render: (row) => row.employee?.name || "-",
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "130px",
+    align: "center",
+    render: (row) =>
+      row.status === "ACTIVE" ? (
+        <Badge tone="success">Aktif</Badge>
+      ) : (
+        <Badge tone="danger">Nonaktif</Badge>
+      ),
+  },
+  {
+    key: "actions",
+    label: "Aksi",
+    width: "300px",
+    align: "center",
+    render: (row) => (
+      <div className="cash-bank-table-actions">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => handleOpenEditUser(row)}
+        >
+          <Pencil size={14} />
+          Edit
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => handleOpenResetPassword(row)}
+        >
+          <KeyRound size={14} />
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className={
+            row.status === "ACTIVE"
+              ? "account-deactivate-icon-button is-active"
+              : "account-deactivate-icon-button is-inactive"
+          }
+          onClick={() => handleToggleUserStatus(row)}
+          title={row.status === "ACTIVE" ? "Nonaktifkan" : "Aktifkan"}
+        >
+          <Power size={15} />
+        </Button>
+      </div>
+    ),
+  },
+];
+
   return (
     <ListPageLayout
       eyebrow=""
@@ -911,6 +1332,243 @@ function SettingsPage() {
         </SettingsCard>
       ) : null}
 
+      {activeTab === "permissions" ? (
+        <SettingsCard
+            key="permissions"
+            title="Hak Akses Role"
+            description="Atur fitur dan menu yang dapat diakses oleh admin staff dan staff gudang."
+            onSave={handleSaveRolePermissions}
+            isLoading={isLoading}
+        >
+            <div className="settings-permission-layout">
+            <div className="settings-permission-role-list">
+                <button
+                type="button"
+                className={
+                    selectedPermissionRole === "ADMIN_STAFF"
+                    ? "settings-permission-role is-active"
+                    : "settings-permission-role"
+                }
+                onClick={() => setSelectedPermissionRole("ADMIN_STAFF")}
+                >
+                <strong>Admin Staff</strong>
+                <span>Transaksi, laporan, piutang, hutang, dan operasional toko.</span>
+                </button>
+
+                <button
+                type="button"
+                className={
+                    selectedPermissionRole === "STAFF_GUDANG"
+                    ? "settings-permission-role is-active"
+                    : "settings-permission-role"
+                }
+                onClick={() => setSelectedPermissionRole("STAFF_GUDANG")}
+                >
+                <strong>Staff Gudang</strong>
+                <span>Inventory, histori stok, stock opname, dan retur barang.</span>
+                </button>
+
+                <div className="settings-permission-owner-note">
+                <strong>OWNER</strong>
+                <span>Owner selalu memiliki akses penuh dan tidak bisa dibatasi.</span>
+                </div>
+            </div>
+
+            <div className="settings-permission-module-panel">
+                {Object.entries(groupedModules).map(([groupName, groupModules]) => (
+                <section key={groupName} className="settings-permission-group">
+                    <div className="settings-permission-group-header">
+                    <span>{groupName}</span>
+                    </div>
+
+                    <div className="settings-permission-grid">
+                    {groupModules.map((moduleItem) => {
+                        const isChecked = selectedModuleKeys.has(moduleItem.key);
+
+                        return (
+                        <button
+                            key={moduleItem.key}
+                            type="button"
+                            className={
+                            isChecked
+                                ? "settings-permission-item is-active"
+                                : "settings-permission-item"
+                            }
+                            onClick={() => handleTogglePermission(moduleItem.key)}
+                        >
+                            <span>{moduleItem.label}</span>
+                            <strong>{isChecked ? "Aktif" : "Nonaktif"}</strong>
+                        </button>
+                        );
+                    })}
+                    </div>
+                </section>
+                ))}
+            </div>
+            </div>
+        </SettingsCard>
+        ) : null}
+
+        {activeTab === "users" ? (
+        <SettingsCard
+            key="users"
+            title="User & Password"
+            description="Kelola akun login, role, status user, dan reset password."
+            actions={
+            <Button variant="primary" onClick={handleOpenCreateUser}>
+                <UserPlus size={16} />
+                Tambah User
+            </Button>
+            }
+            isLoading={isLoading}
+        >
+            <Table
+            className="cash-bank-list-table"
+            columns={userColumns}
+            data={users}
+            isLoading={isLoading}
+            emptyTitle="User belum tersedia"
+            emptyDescription="Tambahkan user agar staff dapat login ke sistem."
+            />
+        </SettingsCard>
+        ) : null}
+
+        {isUserModalOpen
+            ? createPortal(
+                <div className="cash-bank-modal-backdrop">
+                    <form className="cash-bank-form-modal" onSubmit={handleSubmitUser}>
+                    <div className="cash-bank-modal-header">
+                        <div>
+                        <span>{selectedUser ? "Edit User" : "Tambah User"}</span>
+                        <strong>{selectedUser?.name || "Akun Login Baru"}</strong>
+                        <p>
+                            User digunakan untuk login ke sistem sesuai role dan hak akses.
+                        </p>
+                        </div>
+
+                        <button type="button" onClick={handleCloseUserModal}>
+                        <X size={20} />
+                        </button>
+                    </div>
+
+                    {errorMessage ? (
+                        <div className="page-error-alert">{errorMessage}</div>
+                    ) : null}
+
+                    <div className="cash-bank-form-grid">
+                        <SettingsInput
+                        label="Nama User"
+                        name="name"
+                        value={userForm.name}
+                        onChange={handleUserFormChange}
+                        />
+
+                        <SettingsInput
+                        label="Username"
+                        name="username"
+                        value={userForm.username}
+                        onChange={handleUserFormChange}
+                        />
+
+                        {!selectedUser ? (
+                        <SettingsInput
+                            label="Password"
+                            name="password"
+                            type="password"
+                            value={userForm.password}
+                            onChange={handleUserFormChange}
+                        />
+                        ) : null}
+
+                        <label className="settings-field">
+                        <span>Role</span>
+                        <select
+                            name="role"
+                            value={userForm.role}
+                            onChange={handleUserFormChange}
+                        >
+                            <option value="OWNER">Owner</option>
+                            <option value="ADMIN_STAFF">Admin Staff</option>
+                            <option value="STAFF_GUDANG">Staff Gudang</option>
+                        </select>
+                        </label>
+                    </div>
+
+                    <div className="cash-bank-modal-footer">
+                        <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleCloseUserModal}
+                        disabled={isSubmitting}
+                        >
+                        Batal
+                        </Button>
+
+                        <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        <Save size={15} />
+                        Simpan
+                        </Button>
+                    </div>
+                    </form>
+                </div>,
+                document.body
+                )
+            : null}
+        
+        {isResetPasswordModalOpen
+            ? createPortal(
+                <div className="cash-bank-modal-backdrop">
+                    <form
+                    className="cash-bank-form-modal"
+                    onSubmit={handleSubmitResetPassword}
+                    >
+                    <div className="cash-bank-modal-header">
+                        <div>
+                        <span>Reset Password</span>
+                        <strong>{selectedUser?.name || "-"}</strong>
+                        <p>Password baru akan langsung aktif untuk login berikutnya.</p>
+                        </div>
+
+                        <button type="button" onClick={handleCloseResetPasswordModal}>
+                        <X size={20} />
+                        </button>
+                    </div>
+
+                    {errorMessage ? (
+                        <div className="page-error-alert">{errorMessage}</div>
+                    ) : null}
+
+                    <div className="cash-bank-form-grid">
+                        <SettingsInput
+                        label="Password Baru"
+                        name="password"
+                        type="password"
+                        value={resetPasswordForm.password}
+                        onChange={handleResetPasswordFormChange}
+                        />
+                    </div>
+
+                    <div className="cash-bank-modal-footer">
+                        <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleCloseResetPasswordModal}
+                        disabled={isSubmitting}
+                        >
+                        Batal
+                        </Button>
+
+                        <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        <KeyRound size={15} />
+                        Reset Password
+                        </Button>
+                    </div>
+                    </form>
+                </div>,
+                document.body
+                )
+            : null}
+
       {isBankModalOpen
         ? createPortal(
             <div className="cash-bank-modal-backdrop">
@@ -1066,6 +1724,20 @@ function SettingsSummary({ activeTab }) {
       helper: "Prefix, catatan, signature",
       tone: "total",
     },
+    permissions: {
+    icon: UsersRound,
+    label: "Hak Akses",
+    value: "Role Menu",
+    helper: "Admin staff dan staff gudang",
+    tone: "bank",
+    },
+    users: {
+    icon: UserPlus,
+    label: "User & Password",
+    value: "Akun Login",
+    helper: "User, role, status, password",
+    tone: "cash",
+    },
   };
 
   const active = summary[activeTab] || summary.profile;
@@ -1168,6 +1840,14 @@ function formatDueDaysLabel(days) {
   }
 
   return `${totalDays} hari ≈ ${months} bulan ${remainingDays} hari setelah transaksi.`;
+}
+
+function getRoleLabel(role) {
+  if (role === "OWNER") return "Owner";
+  if (role === "ADMIN_STAFF") return "Admin Staff";
+  if (role === "STAFF_GUDANG") return "Staff Gudang";
+
+  return role || "-";
 }
 
 export default SettingsPage;
