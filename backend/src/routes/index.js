@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authRoutes = require("../modules/auth/auth.routes");
+const dashboardRoutes = require("../modules/dashboard/dashboard.routes");
 const categoryRoutes = require("../modules/category/category.routes");
 const productRoutes = require("../modules/product/product.routes");
 const supplierRoutes = require("../modules/supplier/supplier.routes");
@@ -32,6 +33,7 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/auth", authRoutes);
+router.use("/dashboard", dashboardRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
 router.use("/suppliers", supplierRoutes);
