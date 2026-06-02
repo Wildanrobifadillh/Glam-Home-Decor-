@@ -1,6 +1,4 @@
 import {
-  ChevronLeft,
-  ChevronRight,
   Eye,
   FileBarChart,
   RefreshCcw,
@@ -15,13 +13,16 @@ import SearchInput from "../../components/form/SearchInput";
 import ListPageLayout from "../../components/layout/ListPageLayout";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
+import { usePagination } from "../../hooks/usePagination";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { saleApi } from "./sale.api";
+
 
 function SaleListPage() {
   const navigate = useNavigate();
@@ -39,9 +40,6 @@ function SaleListPage() {
     paymentStatus: "",
     saleStatus: "",
   });
-
-  const ITEMS_PER_PAGE = 15;
-  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchSales = useCallback(async () => {
     setIsLoading(true);
@@ -157,20 +155,24 @@ const summary = useMemo(() => {
   };
 }, [filteredSales, financialSales]);
 
-  const totalSales = filteredSales.length;
-  const totalPages = Math.max(Math.ceil(totalSales / ITEMS_PER_PAGE), 1);
-
-  const paginatedSales = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-
-    return filteredSales.slice(startIndex, endIndex);
-  }, [filteredSales, currentPage]);
-
-  const paginationStart =
-    totalSales === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
-
-  const paginationEnd = Math.min(currentPage * ITEMS_PER_PAGE, totalSales);
+  const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedSales,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(filteredSales, {
+    pageSize: 15,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      paymentStatus: filters.paymentStatus,
+      saleStatus: filters.saleStatus,
+    }),
+  });
 
   const handleSearchChange = (value) => {
     setSearchInput(value);
@@ -413,48 +415,15 @@ const summary = useMemo(() => {
           emptyTitle="Penjualan belum tersedia"
           emptyDescription="Belum ada transaksi penjualan yang cocok dengan filter saat ini."
         />
-
-        <div className="sale-list-pagination">
-          <p>
-            Total data: <strong>{totalSales}</strong>
-            {totalSales > 0 ? (
-              <span>
-                {" "}
-                • Menampilkan {paginationStart}-{paginationEnd}
-              </span>
-            ) : null}
-          </p>
-
-          <div className="sale-list-pagination-actions">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-              disabled={currentPage <= 1}
-            >
-              <ChevronLeft size={15} />
-              Sebelumnya
-            </Button>
-
-            <span>
-              Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>
-            </span>
-
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setCurrentPage((page) => Math.min(page + 1, totalPages))
-              }
-              disabled={currentPage >= totalPages}
-            >
-              Berikutnya
-              <ChevronRight size={15} />
-            </Button>
-          </div>
-        </div>
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        startItem={startItem}
+        endItem={endItem}
+        pageSize={15}
+        onPageChange={setCurrentPage}
+      />
     </ListPageLayout>
   );
 }

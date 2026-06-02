@@ -8,15 +8,18 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
-import DateRangeFilter from "../../components/form/DateRangeFilter";import Table from "../../components/ui/Table";
+import DateRangeFilter from "../../components/form/DateRangeFilter";
+import Table from "../../components/ui/Table";
+
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { productApi } from "../products/product.api";
 import { inventoryApi } from "./inventory.api";
 
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 const movementTypes = [
   { value: "IN", label: "Barang Masuk" },
@@ -28,11 +31,6 @@ const movementTypes = [
 function StockHistoryPage() {
   const [stockHistories, setStockHistories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
 
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
@@ -44,7 +42,6 @@ function StockHistoryPage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -55,8 +52,6 @@ function StockHistoryPage() {
 
     try {
       const response = await inventoryApi.getStockHistories({
-        page,
-        limit: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
         productId: filters.productId || undefined,
         type: filters.type || undefined,
@@ -71,8 +66,6 @@ function StockHistoryPage() {
         responseData ||
         [];
 
-      const pagination = responseData?.pagination || responseData?.meta || {};
-
       const rawList = Array.isArray(list) ? list : [];
 
       const filteredList = rawList.filter((history) =>
@@ -80,22 +73,14 @@ function StockHistoryPage() {
     );
 
     setStockHistories(filteredList);
-      setMeta({
-        page: pagination.page || page,
-        totalPages: pagination.totalPages || pagination.totalPage || 1,
-      totalItems:
-        pagination.totalItems ||
-        pagination.total ||
-        pagination.count ||
-        filteredList.length,
-      });
+
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setStockHistories([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.productId, filters.type, filters.dateFrom, filters.dateTo]);
+  }, [debouncedSearch, filters.productId, filters.type, filters.dateFrom, filters.dateTo]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoadingProducts(true);
@@ -142,12 +127,12 @@ function StockHistoryPage() {
   }, [fetchProducts]);
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput(value);
   };
 
   const handleProductFilterChange = (event) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       productId: event.target.value,
@@ -155,7 +140,7 @@ function StockHistoryPage() {
   };
 
   const handleTypeFilterChange = (event) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       type: event.target.value,
@@ -163,7 +148,7 @@ function StockHistoryPage() {
   };
 
     const handleResetFilter = () => {
-      setPage(1);
+      setCurrentPage(1);
       setSearchInput("");
       setFilters({
         productId: "",
@@ -174,13 +159,32 @@ function StockHistoryPage() {
     };
 
     const handleDateRangeChange = (value) => {
-      setPage(1);
+      setCurrentPage(1);
       setFilters((currentFilters) => ({
         ...currentFilters,
         dateFrom: value.dateFrom,
         dateTo: value.dateTo,
       }));
     };
+
+    const {
+      currentPage,
+      totalPages,
+      paginatedData: paginatedStockHistories,
+      startItem,
+      endItem,
+      totalItems,
+      setCurrentPage,
+    } = usePagination(stockHistories, {
+      pageSize: DEFAULT_PAGE_SIZE,
+      resetKey: JSON.stringify({
+        search: debouncedSearch,
+        productId: filters.productId,
+        type: filters.type,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+      }),
+    });
 
     const columns = useMemo(
       () => [
@@ -351,21 +355,28 @@ function StockHistoryPage() {
     >
       {errorMessage ? <div className="page-error-alert">{errorMessage}</div> : null}
 
-      <Table
-        className="stock-history-table"
-        columns={columns}
-        data={stockHistories}
-        isLoading={isLoading}
-        emptyTitle="Histori stok belum tersedia"
-        emptyDescription="Belum ada histori stok yang cocok dengan filter saat ini."
-      />
+      <div className="stock-history-table-shell">
+        <Table
+          className="stock-history-table"
+          columns={columns}
+          data={paginatedStockHistories}
+          isLoading={isLoading}
+          emptyTitle="Histori stok belum tersedia"
+          emptyDescription="Belum ada histori stok yang cocok dengan filter saat ini."
+        />
+      </div>
 
-      <Pagination
-        page={meta.page}
-        totalPages={meta.totalPages}
-        totalItems={meta.totalItems}
-        onPageChange={setPage}
-      />
+      <div className="stock-history-pagination">
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
+      </div>
     </ListPageLayout>
   );
 }

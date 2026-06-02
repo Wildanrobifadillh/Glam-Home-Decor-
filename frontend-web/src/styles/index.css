@@ -2345,7 +2345,6 @@ textarea {
 ================================================== */
 
 .stock-history-table {
-  display: block;
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
@@ -2354,9 +2353,9 @@ textarea {
 }
 
 .stock-history-table .ui-table {
-  width: 1790px;
-  min-width: 1790px;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
 .stock-history-table .ui-table th,

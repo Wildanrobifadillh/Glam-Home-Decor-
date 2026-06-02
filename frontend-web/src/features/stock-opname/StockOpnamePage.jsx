@@ -16,15 +16,18 @@ import Table from "../../components/ui/Table";
 import Textarea from "../../components/ui/Textarea";
 import DateRangeFilter from "../../components/form/DateRangeFilter";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatDateTime } from "../../utils/formatDateTime";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { productApi } from "../products/product.api";
 import { stockOpnameApi } from "./stockOpname.api";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
+const UNCATEGORIZED_CATEGORY_ID = "__uncategorized__";
 
 const createEmptyItem = () => ({
   rowId: crypto.randomUUID(),
+  categoryId: "",
   productId: "",
   physicalStock: "",
   note: "",
@@ -33,11 +36,6 @@ const createEmptyItem = () => ({
 function StockOpnamePage() {
   const [stockOpnames, setStockOpnames] = useState([]);
   const [products, setProducts] = useState([]);
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
 
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
@@ -47,7 +45,6 @@ function StockOpnamePage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -68,8 +65,6 @@ function StockOpnamePage() {
 
     try {
       const response = await stockOpnameApi.getList({
-        page,
-        limit: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
       });
 
@@ -103,25 +98,14 @@ function StockOpnamePage() {
         return matchesSearch && matchesDate;
         });
 
-      const pagination = responseData?.pagination || responseData?.meta || {};
-
       setStockOpnames(Array.isArray(filteredList) ? filteredList : []);
-      setMeta({
-        page: pagination.page || page,
-        totalPages: pagination.totalPages || pagination.totalPage || 1,
-        totalItems:
-            pagination.totalItems ||
-            pagination.total ||
-            pagination.count ||
-            filteredList.length,
-        });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setStockOpnames([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.dateFrom, filters.dateTo]);
+  }, [debouncedSearch, filters.dateFrom, filters.dateTo]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoadingProducts(true);
@@ -170,12 +154,12 @@ function StockOpnamePage() {
   }, [fetchProducts]);
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput(value);
   };
 
   const handleDateRangeChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters({
         dateFrom: value.dateFrom,
         dateTo: value.dateTo,
@@ -183,13 +167,63 @@ function StockOpnamePage() {
     };
 
     const handleResetFilter = () => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput("");
     setFilters({
         dateFrom: "",
         dateTo: "",
     });
     };
+
+    const {
+      currentPage,
+      totalPages,
+      paginatedData: paginatedStockOpnames,
+      startItem,
+      endItem,
+      totalItems,
+      setCurrentPage,
+    } = usePagination(stockOpnames, {
+      pageSize: DEFAULT_PAGE_SIZE,
+      resetKey: JSON.stringify({
+        search: debouncedSearch,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+      }),
+    });
+
+  const categoryOptions = useMemo(() => {
+    const categoryMap = new Map();
+
+    products.forEach((product) => {
+      const categoryId = product.category?.id || UNCATEGORIZED_CATEGORY_ID;
+      const categoryName = product.category?.name || "Tanpa Kategori";
+
+      if (!categoryMap.has(categoryId)) {
+        categoryMap.set(categoryId, {
+          id: categoryId,
+          name: categoryName,
+        });
+      }
+    });
+
+    return Array.from(categoryMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "id")
+    );
+  }, [products]);
+
+  const isProductSelectedInOtherRow = useCallback(
+    (currentRowId, productId) => {
+      if (!productId) {
+        return false;
+      }
+
+      return items.some(
+        (entry) => entry.rowId !== currentRowId && entry.productId === productId
+      );
+    },
+    [items]
+  );
 
   const handleOpenCreateModal = () => {
     setOpnameNote("");
@@ -223,14 +257,25 @@ function StockOpnamePage() {
 
   const handleItemChange = (rowId, field, value) => {
     setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.rowId === rowId
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
-      )
+      currentItems.map((item) => {
+        if (item.rowId !== rowId) {
+          return item;
+        }
+
+        if (field === "categoryId") {
+          return {
+            ...item,
+            categoryId: value,
+            productId: "",
+            physicalStock: "",
+          };
+        }
+
+        return {
+          ...item,
+          [field]: value,
+        };
+      })
     );
   };
 
@@ -447,17 +492,20 @@ function StockOpnamePage() {
         <Table
           className="stock-opname-table"
           columns={columns}
-          data={stockOpnames}
+          data={paginatedStockOpnames}
           isLoading={isLoading}
           emptyTitle="Stock opname belum tersedia"
           emptyDescription="Belum ada stock opname yang cocok dengan filter saat ini."
         />
 
         <Pagination
-          page={meta.page}
-          totalPages={meta.totalPages}
-          totalItems={meta.totalItems}
-          onPageChange={setPage}
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
         />
       </ListPageLayout>
 
@@ -489,8 +537,20 @@ function StockOpnamePage() {
             </div>
 
             {items.map((item, index) => {
+              const availableProducts = products.filter((product) => {
+                const productCategoryId =
+                  product.category?.id || UNCATEGORIZED_CATEGORY_ID;
+
+                return item.categoryId && productCategoryId === item.categoryId;
+              });
+
               const selectedProduct = products.find(
                 (product) => product.id === item.productId
+              );
+
+              const isDuplicateSelection = isProductSelectedInOtherRow(
+                item.rowId,
+                item.productId
               );
 
               const systemStock = selectedProduct?.stock ?? 0;
@@ -514,24 +574,65 @@ function StockOpnamePage() {
                   </div>
 
                   <div className="stock-opname-item-grid">
-                    <FormField label="Barang" required className="form-grid-full">
+                    <FormField label="Kategori" required className="form-grid-full">
+                      <Select
+                        value={item.categoryId}
+                        onChange={(event) =>
+                          handleItemChange(item.rowId, "categoryId", event.target.value)
+                        }
+                        disabled={isLoadingProducts}
+                      >
+                        <option value="">
+                          {isLoadingProducts ? "Memuat kategori..." : "Pilih Kategori"}
+                        </option>
+
+                        {categoryOptions.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                    
+                    <FormField
+                      label="Barang"
+                      required
+                      className="form-grid-full"
+                      error={
+                        isDuplicateSelection
+                          ? "Barang ini sudah dipilih pada item lain."
+                          : ""
+                      }
+                    >
                       <Select
                         value={item.productId}
                         onChange={(event) =>
                           handleItemChange(item.rowId, "productId", event.target.value)
                         }
-                        disabled={isLoadingProducts}
+                        disabled={isLoadingProducts || !item.categoryId}
                       >
                         <option value="">
-                          {isLoadingProducts ? "Memuat barang..." : "Pilih Barang"}
+                          {isLoadingProducts
+                            ? "Memuat barang..."
+                            : !item.categoryId
+                            ? "Pilih kategori dulu"
+                            : "Pilih Barang"}
                         </option>
 
-                        {products.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.supplierCode} - {product.name} | Stok:{" "}
-                            {product.stock}
-                          </option>
-                        ))}
+                        {availableProducts.map((product) => {
+                          const isDisabled = isProductSelectedInOtherRow(item.rowId, product.id);
+
+                          return (
+                            <option
+                              key={product.id}
+                              value={product.id}
+                              disabled={isDisabled}
+                            >
+                              {product.supplierCode} - {product.name} | Stok: {product.stock}
+                              {isDisabled ? " (sudah dipilih)" : ""}
+                            </option>
+                          );
+                        })}
                       </Select>
                     </FormField>
 

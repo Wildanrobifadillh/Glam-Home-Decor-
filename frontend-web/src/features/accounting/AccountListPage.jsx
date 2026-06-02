@@ -22,7 +22,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
-import Pagination from "../../components/UI/Pagination";
+import Pagination from "../../components/ui/Pagination";
 import { usePagination } from "../../hooks/usePagination";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../utils/getErrorMessage";

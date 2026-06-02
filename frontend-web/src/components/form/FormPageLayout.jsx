@@ -1,5 +1,5 @@
 import Card from "../ui/Card";
-import ModuleHeader from "./ModuleHeader";
+import ModuleHeader from "../layout/ModuleHeader";
 
 function FormPageLayout({
   eyebrow,

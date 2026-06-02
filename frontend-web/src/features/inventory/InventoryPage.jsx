@@ -21,12 +21,13 @@ import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
 import Textarea from "../../components/ui/Textarea";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { categoryApi } from "../categories/category.api";
 import { productApi } from "../products/product.api";
 import { inventoryApi } from "./inventory.api";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 const emptyFormValues = {
   quantity: "",
@@ -37,11 +38,6 @@ const emptyFormValues = {
 function InventoryPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
 
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
@@ -51,7 +47,6 @@ function InventoryPage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -69,8 +64,6 @@ function InventoryPage() {
 
     try {
       const response = await productApi.getList({
-        page,
-        limit: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
         status: "ACTIVE",
         categoryId: filters.categoryId || undefined,
@@ -91,25 +84,14 @@ function InventoryPage() {
         ? productList.filter((product) => getStockStatus(product).value === filters.stockStatus)
         : productList;
 
-      const pagination = responseData?.pagination || responseData?.meta || {};
-
       setProducts(filteredProducts);
-      setMeta({
-        page: pagination.page || page,
-        totalPages: pagination.totalPages || pagination.totalPage || 1,
-        totalItems:
-          pagination.totalItems ||
-          pagination.total ||
-          pagination.count ||
-          filteredProducts.length,
-      });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.categoryId, filters.stockStatus]);
+  }, [debouncedSearch, filters.categoryId, filters.stockStatus]);
 
   const fetchCategories = useCallback(async () => {
     setIsLoadingCategories(true);
@@ -158,12 +140,12 @@ function InventoryPage() {
   }, [fetchCategories]);
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput(value);
   };
 
   const handleCategoryFilterChange = (event) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       categoryId: event.target.value,
@@ -171,7 +153,7 @@ function InventoryPage() {
   };
 
   const handleStockStatusFilterChange = (event) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       stockStatus: event.target.value,
@@ -179,13 +161,30 @@ function InventoryPage() {
   };
 
   const handleResetFilter = () => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput("");
     setFilters({
       categoryId: "",
       stockStatus: "",
     });
   };
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedProducts,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(products, {
+    pageSize: DEFAULT_PAGE_SIZE,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      categoryId: filters.categoryId,
+      stockStatus: filters.stockStatus,
+    }),
+  });
 
   const handleOpenMutationModal = (product, type) => {
     setSelectedProduct(product);
@@ -459,17 +458,20 @@ function InventoryPage() {
         <Table
           className="inventory-stock-table"
           columns={columns}
-          data={products}
+          data={paginatedProducts}
           isLoading={isLoading}
           emptyTitle="Inventory belum tersedia"
           emptyDescription="Belum ada barang aktif yang cocok dengan filter saat ini."
         />
 
         <Pagination
-          page={meta.page}
-          totalPages={meta.totalPages}
-          totalItems={meta.totalItems}
-          onPageChange={setPage}
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
         />
       </ListPageLayout>
 

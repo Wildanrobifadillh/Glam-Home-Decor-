@@ -22,7 +22,9 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
+import Pagination from "../../components/ui/Pagination";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -157,6 +159,7 @@ function ReceivableListPage() {
       dateFrom: value.dateFrom,
       dateTo: value.dateTo,
     }));
+    setCurrentPage(1);
   };
 
   const handleFilterChange = (event) => {
@@ -166,6 +169,7 @@ function ReceivableListPage() {
       ...current,
       [name]: value,
     }));
+    setCurrentPage(1);
   };
 
   const handleResetFilter = () => {
@@ -177,6 +181,12 @@ function ReceivableListPage() {
       paymentStatus: "",
       agingBucket: "",
     });
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+    setCurrentPage(1);
   };
 
   const handleOpenDetail = useCallback(
@@ -347,6 +357,25 @@ function ReceivableListPage() {
     );
   }, [filteredReceivables]);
 
+  const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedReceivables,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(filteredReceivables, {
+    pageSize: 15,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      paymentStatus: filters.paymentStatus,
+      agingBucket: filters.agingBucket,
+    }),
+  });
+
   const paymentHistory = useMemo(() => {
     return Array.isArray(selectedReceivable?.receivablePayments)
       ? selectedReceivable.receivablePayments
@@ -475,7 +504,7 @@ function ReceivableListPage() {
         <FilterBar>
           <SearchInput
             value={searchInput}
-            onChange={setSearchInput}
+            onChange={handleSearchChange}
             placeholder="Cari no penjualan, invoice, atau customer..."
           />
 
@@ -569,10 +598,19 @@ function ReceivableListPage() {
       <Table
         className="receivable-list-table"
         columns={columns}
-        data={filteredReceivables}
+        data={paginatedReceivables}
         isLoading={isLoading}
         emptyTitle="Piutang belum tersedia"
         emptyDescription="Belum ada data piutang yang cocok dengan filter saat ini."
+      />
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        startItem={startItem}
+        endItem={endItem}
+        pageSize={15}
+        onPageChange={setCurrentPage}
       />
 
       {isDetailModalOpen

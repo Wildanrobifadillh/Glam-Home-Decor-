@@ -20,13 +20,16 @@ import SearchInput from "../../components/form/SearchInput";
 import ListPageLayout from "../../components/layout/ListPageLayout";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import Pagination from "../../components/ui/Pagination"
 import Card from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { purchaseReturnApi, saleReturnApi } from "./return.api";
+
 
 function ReturnListPage() {
   const navigate = useNavigate();
@@ -96,6 +99,7 @@ function ReturnListPage() {
       dateFrom: value.dateFrom,
       dateTo: value.dateTo,
     });
+    setCurrentPage(1);
   };
 
   const handleResetFilter = () => {
@@ -105,7 +109,18 @@ function ReturnListPage() {
       dateFrom: "",
       dateTo: "",
     });
+    setCurrentPage(1);
   };
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+    setCurrentPage(1);
+  };
+
+  const handleTypeFilterChange = (event) => {
+    setTypeFilter(event.target.value);
+    setCurrentPage(1);
+  };
+  
 
   const mergedReturns = useMemo(() => {
     const mappedSaleReturns = saleReturns.map((item) => ({
@@ -194,6 +209,24 @@ function ReturnListPage() {
       }
     );
   }, [filteredReturns]);
+
+    const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedReturns,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(filteredReturns, {
+    pageSize: 15,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      typeFilter,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+    }),
+  });
 
   const detailItems = useMemo(() => {
     return Array.isArray(detailReturn?.items) ? detailReturn.items : [];
@@ -364,7 +397,7 @@ function ReturnListPage() {
         <FilterBar>
           <SearchInput
             value={searchInput}
-            onChange={setSearchInput}
+            onChange={handleSearchChange}
             placeholder="Cari no retur, transaksi, customer, atau supplier..."
           />
 
@@ -379,7 +412,7 @@ function ReturnListPage() {
           <select
             className="report-filter-select"
             value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
+            onChange={handleTypeFilterChange}
           >
             <option value="">Semua Tipe Retur</option>
             <option value="SALE">Retur Penjualan</option>
@@ -436,12 +469,20 @@ function ReturnListPage() {
       <Table
         className="return-list-table"
         columns={columns}
-        data={filteredReturns}
+        data={paginatedReturns}
         isLoading={isLoading}
         emptyTitle="Retur belum tersedia"
         emptyDescription="Belum ada retur penjualan atau pembelian yang cocok dengan filter saat ini."
       />
-
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        startItem={startItem}
+        endItem={endItem}
+        pageSize={15}
+        onPageChange={setCurrentPage}
+      />
       {isDetailModalOpen
         ? createPortal(
             <div className="return-detail-modal-backdrop">

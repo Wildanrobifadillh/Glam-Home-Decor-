@@ -22,8 +22,10 @@ import ListPageLayout from "../../components/layout/ListPageLayout";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
+import Pagination from "../../components/ui/Pagination";
 import Table from "../../components/ui/Table";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -160,6 +162,7 @@ function PayableListPage() {
       dateFrom: value.dateFrom,
       dateTo: value.dateTo,
     }));
+    setCurrentPage(1);
   };
 
   const handleFilterChange = (event) => {
@@ -169,6 +172,7 @@ function PayableListPage() {
       ...current,
       [name]: value,
     }));
+    setCurrentPage(1);
   };
 
   const handleResetFilter = () => {
@@ -180,6 +184,12 @@ function PayableListPage() {
       paymentStatus: "",
       agingBucket: "",
     });
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+    setCurrentPage(1);
   };
 
   const handleOpenDetail = useCallback(
@@ -349,6 +359,25 @@ function PayableListPage() {
     );
   }, [filteredPayables]);
 
+  const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedPayables,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(filteredPayables, {
+    pageSize: 15,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      paymentStatus: filters.paymentStatus,
+      agingBucket: filters.agingBucket,
+    }),
+  });
+
   const paymentHistory = useMemo(() => {
     return Array.isArray(selectedPayable?.payablePayments)
       ? selectedPayable.payablePayments
@@ -477,7 +506,7 @@ function PayableListPage() {
         <FilterBar>
           <SearchInput
             value={searchInput}
-            onChange={setSearchInput}
+            onChange={handleSearchChange}
             placeholder="Cari no pembelian, invoice, atau supplier..."
           />
 
@@ -571,10 +600,19 @@ function PayableListPage() {
       <Table
         className="receivable-list-table"
         columns={columns}
-        data={filteredPayables}
+        data={paginatedPayables}
         isLoading={isLoading}
         emptyTitle="Hutang belum tersedia"
         emptyDescription="Belum ada data hutang yang cocok dengan filter saat ini."
+      />
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        startItem={startItem}
+        endItem={endItem}
+        pageSize={15}
+        onPageChange={setCurrentPage}
       />
 
       {isDetailModalOpen

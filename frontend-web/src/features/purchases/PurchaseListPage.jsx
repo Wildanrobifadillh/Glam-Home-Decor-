@@ -29,8 +29,9 @@ import { getErrorMessage } from "../../utils/getErrorMessage";
 import { cashBankApi } from "../cash-bank/cashBank.api";
 import { supplierApi } from "../suppliers/supplier.api";
 import { purchaseApi } from "./purchase.api";
+import { usePagination } from "../../hooks/usePagination";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 const initialPaymentForm = {
   amount: "",
@@ -57,7 +58,6 @@ function PurchaseListPage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(false);
   const [isLoadingCashBankAccounts, setIsLoadingCashBankAccounts] =
@@ -213,28 +213,35 @@ function PurchaseListPage() {
     filters.dateTo,
   ]);
 
-    const totalPages = Math.max(
-    Math.ceil(filteredPurchases.length / DEFAULT_PAGE_SIZE),
-    1
-    );
-
-    const currentPage = Math.min(page, totalPages);
-
-    const paginatedPurchases = useMemo(() => {
-    const startIndex = (currentPage - 1) * DEFAULT_PAGE_SIZE;
-
-    return filteredPurchases.slice(startIndex, startIndex + DEFAULT_PAGE_SIZE);
-    }, [filteredPurchases, currentPage]);
+    const {
+      currentPage,
+      totalPages,
+      paginatedData: paginatedPurchases,
+      startItem,
+      endItem,
+      totalItems,
+      setCurrentPage,
+    } = usePagination(filteredPurchases, {
+      pageSize: DEFAULT_PAGE_SIZE,
+      resetKey: JSON.stringify({
+        search: debouncedSearch,
+        supplierId: filters.supplierId,
+        paymentStatus: filters.paymentStatus,
+        paymentMethod: filters.paymentMethod,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+      }),
+    });
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput(value);
   };
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
 
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       [name]: value,
@@ -242,7 +249,7 @@ function PurchaseListPage() {
   };
 
   const handleDateRangeChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       dateFrom: value.dateFrom,
@@ -251,7 +258,7 @@ function PurchaseListPage() {
   };
 
   const handleResetFilter = () => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput("");
     setFilters({
       supplierId: "",
@@ -499,10 +506,13 @@ function PurchaseListPage() {
         />
 
         <Pagination
-        page={currentPage}
-        totalPages={totalPages}
-        totalItems={filteredPurchases.length}
-        onPageChange={setPage}
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
         />
       </ListPageLayout>
 
