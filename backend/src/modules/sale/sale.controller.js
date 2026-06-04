@@ -147,6 +147,23 @@ const getSaleInvoicePreview = async (req, res, next) => {
   }
 };
 
+const getSaleDeliveryOrderPreview = async (req, res, next) => {
+  try {
+    const deliveryOrderPreview =
+      await saleService.getSaleDeliveryOrderPreview(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale delivery order preview retrieved successfully",
+      data: {
+        deliveryOrderPreview,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const generateSaleInvoice = async (req, res, next) => {
   try {
     const invoice = await saleService.generateSaleInvoice(req.params.id);
@@ -156,6 +173,24 @@ const generateSaleInvoice = async (req, res, next) => {
       message: "Sale invoice generated successfully",
       data: {
         invoice,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const generateSaleDeliveryOrder = async (req, res, next) => {
+  try {
+    const deliveryOrder = await saleService.generateSaleDeliveryOrder(
+      req.params.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale delivery order generated successfully",
+      data: {
+        deliveryOrder,
       },
     });
   } catch (error) {
@@ -179,6 +214,20 @@ const generateSaleInvoicePdf = async (req, res, next) => {
   }
 };
 
+const generateSaleDeliveryOrderPdf = async (req, res, next) => {
+  try {
+    const { pdfBuffer, fileName } =
+      await saleService.generateSaleDeliveryOrderPdf(req.params.id);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+
+    return res.send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -187,6 +236,9 @@ module.exports = {
   rejectSale,
   paySale,
   getSaleInvoicePreview,
+  getSaleDeliveryOrderPreview,
   generateSaleInvoice,
+  generateSaleDeliveryOrder,
   generateSaleInvoicePdf,
+  generateSaleDeliveryOrderPdf,
 };

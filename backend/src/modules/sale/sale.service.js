@@ -9,6 +9,9 @@ const {
 const {
   generateSaleInvoicePdfBuffer,
 } = require("./sale.invoice-pdf");
+const {
+  generateSaleDeliveryOrderPdfBuffer,
+} = require("./sale.delivery-order-pdf");
 
 const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 
@@ -936,6 +939,27 @@ const generateSalesInvoiceNumber = async ({ tx, documentSetting, date }) => {
   return `${invoicePrefix}-${padNumber(nextNumber)}`;
 };
 
+const generateDeliveryOrderNumber = async ({ tx, documentSetting, date }) => {
+  const prefix = documentSetting.deliveryOrderPrefix;
+  const yearMonth = getYearMonth(date);
+
+  const deliveryOrderPrefix = documentSetting.resetNumberMonthly
+    ? `${prefix}-${yearMonth}`
+    : `${prefix}`;
+
+  const existingDeliveryOrderCount = await tx.sale.count({
+    where: {
+      deliveryOrderNumber: {
+        startsWith: deliveryOrderPrefix,
+      },
+    },
+  });
+
+  const nextNumber = existingDeliveryOrderCount + 1;
+
+  return `${deliveryOrderPrefix}-${padNumber(nextNumber)}`;
+};
+
 const getSaleInvoicePreview = async (saleId) => {
   const sale = await prisma.sale.findUnique({
     where: {
@@ -1151,6 +1175,121 @@ const getSaleInvoicePreview = async (saleId) => {
   };
 };
 
+const getSaleDeliveryOrderPreview = async (saleId) => {
+  const sale = await prisma.sale.findUnique({
+    where: {
+      id: saleId,
+    },
+    include: {
+      customer: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            include: {
+              category: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!sale) {
+    const error = new Error("Sale not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (sale.status === "REJECTED") {
+    const error = new Error("Rejected sale cannot generate delivery order preview");
+    error.status = 400;
+    throw error;
+  }
+
+  const storeProfile = await settingsService.getStoreProfile();
+  const documentSetting = await settingsService.getDocumentSetting();
+
+  const paperSize = documentSetting.defaultPaperSize;
+  const maxItems =
+    paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
+
+  const totalQuantity = sale.items.reduce((total, item) => {
+    return total + item.quantity;
+  }, 0);
+
+  return {
+    deliveryOrder: {
+      saleId: sale.id,
+      saleNumber: sale.saleNumber,
+      invoiceNumber: sale.invoiceNumber,
+      deliveryOrderNumber: sale.deliveryOrderNumber,
+      previewNumber: sale.deliveryOrderNumber || `DRAFT-SJ-${sale.saleNumber}`,
+      deliveryOrderDate: sale.deliveryOrderDate,
+      transactionDate: sale.createdAt,
+      saleStatus: sale.status,
+      paperSize,
+      maxItems,
+      isOfficialDeliveryOrder: Boolean(sale.deliveryOrderNumber),
+    },
+    store: {
+      name: storeProfile.name,
+      legalName: storeProfile.legalName,
+      brandShortName: storeProfile.brandShortName,
+      address: storeProfile.address,
+      phone: storeProfile.phone,
+      email: storeProfile.email,
+      website: storeProfile.website,
+      socialMedia: storeProfile.socialMedia,
+      logoUrl: storeProfile.logoUrl,
+      taxNumber: storeProfile.taxNumber,
+      businessNumber: storeProfile.businessNumber,
+    },
+    customer: {
+      id: sale.customerId,
+      name: sale.customer ? sale.customer.name : sale.customerName,
+      phone: sale.customer ? sale.customer.phone : sale.customerPhone,
+      address: sale.customer?.address || sale.customerAddress || null,
+      type: sale.customer ? sale.customer.type : null,
+    },
+    items: sale.items.map((item, index) => ({
+      no: index + 1,
+      productId: item.productId,
+      productCode: item.product.searchCode,
+      supplierCode: item.product.supplierCode,
+      productName: item.product.name,
+      categoryName: item.product.category ? item.product.category.name : null,
+      unit: item.product.unit,
+      quantity: item.quantity,
+    })),
+    summary: {
+      totalItemCount: sale.items.length,
+      totalQuantity,
+    },
+    notes: {
+      saleNote: sale.note,
+      additionalNote: documentSetting.additionalNote,
+    },
+    authorization: {
+      responsiblePersonName: documentSetting.responsiblePersonName,
+      responsiblePersonTitle: documentSetting.responsiblePersonTitle,
+      showSignature: documentSetting.showSignature,
+      signatureUrl: documentSetting.signatureUrl,
+      showStamp: documentSetting.showStamp,
+      stampUrl: documentSetting.stampUrl,
+      signatureText: documentSetting.signatureText,
+    },
+    createdBy: sale.createdBy,
+  };
+};
+
 const generateSaleInvoice = async (saleId) => {
   const sale = await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findUnique({
@@ -1269,6 +1408,101 @@ const generateSaleInvoice = async (saleId) => {
   };
 };
 
+const generateSaleDeliveryOrder = async (saleId) => {
+  const sale = await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("Sale not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (sale.status !== "COMPLETED") {
+      const error = new Error("Only completed sale can generate delivery order");
+      error.status = 400;
+      throw error;
+    }
+
+    if (sale.deliveryOrderNumber) {
+      const error = new Error("Delivery order number already generated");
+      error.status = 400;
+      throw error;
+    }
+
+    const documentSetting = await tx.documentSetting.upsert({
+      where: {
+        key: "MAIN",
+      },
+      update: {},
+      create: {
+        key: "MAIN",
+        documentLanguage: "ID",
+        salesInvoicePrefix: "INV-SALE-GHD",
+        salesReturnPrefix: "RET-SALE-GHD",
+        purchaseReturnPrefix: "RET-PUR-GHD",
+        payrollSlipPrefix: "PAYSLIP-GHD",
+        reportPrefix: "RPT-GHD",
+        deliveryOrderPrefix: "SJ-GHD",
+        resetNumberMonthly: true,
+        defaultPaperSize: "F4",
+        alternatePaperSize: "A4",
+        invoiceCopies: 3,
+        maxItemsF4: 12,
+        maxItemsA4: 8,
+        copyLabel1: "LEMBAR 1 - PELANGGAN",
+        copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
+        copyLabel3: "LEMBAR 3 - ARSIP TOKO",
+        thankYouNote:
+          "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+        transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
+        complaintTerms:
+          "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
+        returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
+        paymentTerms:
+          "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+        additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
+        responsiblePersonName: "Zaid Ishmatul Fawaid",
+        responsiblePersonTitle: "Penanggung Jawab / Owner",
+        showSignature: true,
+        signatureUrl: null,
+        showStamp: true,
+        stampUrl: null,
+        signatureText: "Hormat kami,\nGlam Home Decor",
+      },
+    });
+
+    const deliveryOrderDate = new Date();
+
+    const deliveryOrderNumber = await generateDeliveryOrderNumber({
+      tx,
+      documentSetting,
+      date: deliveryOrderDate,
+    });
+
+    return tx.sale.update({
+      where: {
+        id: saleId,
+      },
+      data: {
+        deliveryOrderNumber,
+        deliveryOrderDate,
+      },
+    });
+  });
+
+  const deliveryOrderPreview = await getSaleDeliveryOrderPreview(sale.id);
+
+  return {
+    sale,
+    deliveryOrderPreview,
+  };
+};
+
 const generateSaleInvoicePdf = async (saleId) => {
   const invoicePreview = await getSaleInvoicePreview(saleId);
 
@@ -1300,6 +1534,38 @@ const generateSaleInvoicePdf = async (saleId) => {
   };
 };
 
+const generateSaleDeliveryOrderPdf = async (saleId) => {
+  const deliveryOrderPreview = await getSaleDeliveryOrderPreview(saleId);
+
+  if (!deliveryOrderPreview.deliveryOrder.isOfficialDeliveryOrder) {
+    const error = new Error(
+      "Generate delivery order number before creating PDF"
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  if (
+    deliveryOrderPreview.items.length >
+    deliveryOrderPreview.deliveryOrder.maxItems
+  ) {
+    const error = new Error(
+      `Delivery order item limit exceeded for ${deliveryOrderPreview.deliveryOrder.paperSize}. Maximum item is ${deliveryOrderPreview.deliveryOrder.maxItems}`
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  const pdfBuffer = await generateSaleDeliveryOrderPdfBuffer(
+    deliveryOrderPreview
+  );
+
+  return {
+    pdfBuffer,
+    fileName: `${deliveryOrderPreview.deliveryOrder.deliveryOrderNumber}.pdf`,
+  };
+};
+
 module.exports = {
   getAllSales,
   getSaleById,
@@ -1308,6 +1574,9 @@ module.exports = {
   rejectSale,
   paySale,
   getSaleInvoicePreview,
+  getSaleDeliveryOrderPreview,
   generateSaleInvoice,
+  generateSaleDeliveryOrder,
   generateSaleInvoicePdf,
+  generateSaleDeliveryOrderPdf,
 };

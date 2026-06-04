@@ -15,9 +15,21 @@ router.get(
 );
 
 router.get(
+  "/:id/delivery-order-preview",
+  authenticate,
+  saleController.getSaleDeliveryOrderPreview
+);
+
+router.get(
   "/:id/invoice-pdf",
   authenticate,
   saleController.generateSaleInvoicePdf
+);
+
+router.get(
+  "/:id/delivery-order-pdf",
+  authenticate,
+  saleController.generateSaleDeliveryOrderPdf
 );
 
 router.get("/:id", authenticate, saleController.getSaleById);
@@ -27,6 +39,13 @@ router.post(
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),
   saleController.generateSaleInvoice
+);
+
+router.post(
+  "/:id/generate-delivery-order",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  saleController.generateSaleDeliveryOrder
 );
 
 router.post(

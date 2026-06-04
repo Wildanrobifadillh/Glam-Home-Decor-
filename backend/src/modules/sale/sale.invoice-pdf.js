@@ -66,6 +66,70 @@ const drawCell = (
   });
 };
 
+const drawInvoiceReceiverSection = (doc, x, y, width) => {
+  doc.font("Helvetica-Bold").fontSize(10);
+  drawText(doc, "Penerima", x, y, {
+    width,
+    align: "center",
+  });
+
+  const lineY = y + 92;
+
+  drawLine(doc, x + 55, lineY, x + width - 55, lineY);
+
+  doc.font("Helvetica").fontSize(9);
+  drawText(doc, "(__________________________)", x, lineY + 8, {
+    width,
+    align: "center",
+  });
+
+  drawText(doc, "Nama Jelas & Tanda Tangan", x, lineY + 26, {
+    width,
+    align: "center",
+  });
+
+  return lineY + 42;
+};
+
+const drawInvoiceSenderSection = (
+  doc,
+  x,
+  y,
+  width,
+  storeName,
+  responsiblePersonName,
+  responsiblePersonTitle
+) => {
+  doc.font("Helvetica").fontSize(9);
+  drawText(doc, "Hormat kami,", x, y, {
+    width,
+    align: "center",
+  });
+
+  drawText(doc, storeName || "Glam Home Decor", x, y + 18, {
+    width,
+    align: "center",
+  });
+
+  const lineY = y + 92;
+
+  drawLine(doc, x + 55, lineY, x + width - 55, lineY);
+
+  doc.font("Helvetica-Bold").fontSize(9);
+  drawText(doc, responsiblePersonName || "-", x, lineY + 10, {
+    width,
+    align: "center",
+  });
+
+  doc.font("Helvetica").fontSize(8);
+  drawText(doc, responsiblePersonTitle || "Penanggung Jawab", x, lineY + 28, {
+    width,
+    align: "center",
+  });
+
+  return lineY + 42;
+};
+
 const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   const { invoice, store, customer, items, summary, payment, invoiceBankAccount, notes, authorization, createdBy } =
     invoicePreview;
@@ -377,33 +441,26 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
 
   drawText(doc, notes.thankYouNote, margin, y, { width: contentWidth });
 
-  const signatureX = pageWidth - margin - 190;
-  const signatureY = y + 28;
+    const footerY = y + 28;
+    const blockWidth = 220;
+    const gap = contentWidth - blockWidth * 2;
 
-  doc.font("Helvetica").fontSize(9);
-  drawText(doc, "Hormat kami,", signatureX, signatureY, {
-    width: 190,
-    align: "center",
-  });
+    const leftX = margin;
+    const rightXFooter = margin + blockWidth + gap;
 
-  drawText(doc, store.name, signatureX, signatureY + 14, {
-    width: 190,
-    align: "center",
-  });
+    // kiri
+    drawInvoiceReceiverSection(doc, leftX, footerY, blockWidth);
 
-  const responsibleY = signatureY + 70;
-
-  doc.font("Helvetica-Bold").fontSize(9);
-  drawText(doc, authorization.responsiblePersonName, signatureX, responsibleY, {
-    width: 190,
-    align: "center",
-  });
-
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, authorization.responsiblePersonTitle, signatureX, responsibleY + 15, {
-    width: 190,
-    align: "center",
-  });
+    // kanan
+    drawInvoiceSenderSection(
+      doc,
+      rightXFooter,
+      footerY,
+      blockWidth,
+      store.name,
+      authorization.responsiblePersonName,
+      authorization.responsiblePersonTitle
+    );
 
   // doc.font("Helvetica").fontSize(7);
   // drawText(doc, `Dicetak oleh: ${createdBy.name}`, margin, doc.page.height - 40);

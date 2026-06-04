@@ -391,6 +391,8 @@ model Sale {
   invoiceNumber      String?       @unique @map("invoice_number")
   invoiceDate        DateTime?     @map("invoice_date")
   dueDate            DateTime?     @map("due_date")
+  deliveryOrderNumber String?   @unique @map("delivery_order_number")
+  deliveryOrderDate   DateTime? @map("delivery_order_date")
   customerId         String?       @map("customer_id") @db.Uuid
   customerName       String?       @map("customer_name")
   customerPhone      String?       @map("customer_phone")

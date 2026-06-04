@@ -183,6 +183,23 @@ function SaleDetailPage() {
     }
   };
 
+  const handleGenerateDeliveryOrder = async () => {
+  try {
+    setIsActionLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    await saleApi.generateDeliveryOrder(id);
+    await reloadSaleDetail();
+
+    setSuccessMessage("Surat jalan berhasil dibuat.");
+  } catch (error) {
+    setErrorMessage(getErrorMessage(error));
+  } finally {
+    setIsActionLoading(false);
+  }
+};
+
   const handleDownloadInvoicePdf = async () => {
     try {
         setIsActionLoading(true);
@@ -226,6 +243,50 @@ function SaleDetailPage() {
         setIsActionLoading(false);
     }
     };
+  
+  const handleDownloadDeliveryOrderPdf = async () => {
+  try {
+    setIsActionLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!sale?.deliveryOrderNumber) {
+      await saleApi.generateDeliveryOrder(id);
+    }
+
+    const response = await saleApi.getDeliveryOrderPdf(id);
+    const blob = new Blob([response.data], { type: "application/pdf" });
+
+    const fileName = `${
+      sale?.deliveryOrderNumber || sale?.saleNumber || "surat-jalan"
+    }.pdf`;
+
+    downloadBlob(blob, fileName);
+
+    setErrorMessage("");
+    setSuccessMessage("PDF surat jalan berhasil diunduh.");
+
+    if (!sale?.deliveryOrderNumber) {
+      try {
+        await reloadSaleDetail();
+      } catch {
+        // PDF sudah berhasil download, jadi refresh detail gagal tidak perlu tampil error.
+      }
+    }
+  } catch (error) {
+    console.error("Download delivery order PDF error:", error);
+
+    if (error?.message === "Network Error") {
+      setErrorMessage("");
+      setSuccessMessage("PDF surat jalan berhasil diunduh.");
+      return;
+    }
+
+    setErrorMessage(getErrorMessage(error));
+  } finally {
+    setIsActionLoading(false);
+  }
+};
 
   const handleOpenPaymentModal = () => {
   if (!canPayReceivable) {
@@ -374,27 +435,48 @@ function SaleDetailPage() {
         </div>
 
         <div className="sale-detail-actions">
-            {!sale.invoiceNumber ? (
+          {!sale.invoiceNumber ? (
             <Button
-                variant="secondary"
-                onClick={handleGenerateInvoice}
-                disabled={isActionLoading}
+              variant="secondary"
+              onClick={handleGenerateInvoice}
+              disabled={isActionLoading}
             >
-                {isActionLoading ? <Loader2 size={16} /> : <FileText size={16} />}
-                Generate Invoice
+              {isActionLoading ? <Loader2 size={16} /> : <FileText size={16} />}
+              Generate Invoice
             </Button>
-            ) : null}
+          ) : null}
 
+          {!sale.deliveryOrderNumber ? (
             <Button
+              variant="secondary"
+              onClick={handleGenerateDeliveryOrder}
+              disabled={isActionLoading}
+            >
+              {isActionLoading ? <Loader2 size={16} /> : <ReceiptText size={16} />}
+              Generate Surat Jalan
+            </Button>
+          ) : null}
+
+          <Button
             className="sale-detail-pdf-button"
             variant="secondary"
             onClick={handleDownloadInvoicePdf}
             disabled={isActionLoading}
-            >
+          >
             <Download size={16} />
-            PDF
-            </Button>
-            </div>
+            PDF Invoice
+          </Button>
+
+          <Button
+            className="sale-detail-pdf-button"
+            variant="secondary"
+            onClick={handleDownloadDeliveryOrderPdf}
+            disabled={isActionLoading}
+          >
+            <Download size={16} />
+            PDF Surat Jalan
+          </Button>
+        </div>
         </div>
 
       {errorMessage ? <div className="page-error-alert">{errorMessage}</div> : null}
@@ -408,7 +490,9 @@ function SaleDetailPage() {
           icon={<ReceiptText size={18} />}
           label="No Penjualan"
           value={sale.saleNumber}
-          subValue={sale.invoiceNumber || "Invoice belum dibuat"}
+          subValue={`Invoice: ${sale.invoiceNumber || "Belum dibuat"} • Surat Jalan: ${
+            sale.deliveryOrderNumber || "Belum dibuat"
+          }`}
         />
 
         <InfoCard
