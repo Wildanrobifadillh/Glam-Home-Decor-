@@ -9606,3 +9606,94 @@ textarea {
     grid-column: 1 / -1;
   }
 }
+
+/* ==================================================
+   CASH BANK MANUAL CASH IN
+================================================== */
+
+.cash-bank-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cash-bank-page-actions .btn,
+.cash-bank-page-actions button {
+  flex-shrink: 0;
+}
+
+.return-confirm-summary {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 4px;
+}
+
+.return-confirm-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, #eadfce);
+  border-radius: 14px;
+  background: var(--color-surface-soft, #f8f3ea);
+}
+
+.return-confirm-summary span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8b7f72);
+}
+
+.return-confirm-summary strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text, #2f2620);
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .cash-bank-page-actions {
+    width: 100%;
+  }
+
+  .cash-bank-page-actions .btn,
+  .cash-bank-page-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ==================================================
+   CASH BANK MANUAL CASH IN FOOTER
+================================================== */
+
+.cash-bank-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border, #e8dccb);
+}
+
+.cash-bank-form-actions .btn,
+.cash-bank-form-actions button {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .cash-bank-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cash-bank-form-actions .btn,
+  .cash-bank-form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

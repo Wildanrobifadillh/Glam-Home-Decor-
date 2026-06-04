@@ -29,6 +29,7 @@ import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { accountApi } from "../accounting/account.api";
 import { cashBankApi } from "./cashBank.api";
+import { journalEntryApi } from "../journal-entries/journalEntry.api";
 import Pagination from "../../components/ui/Pagination";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -43,6 +44,15 @@ const initialForm = {
   status: "ACTIVE",
 };
 
+const initialCashInForm = {
+  entryDate: new Date().toISOString().slice(0, 10),
+  cashBankAccountId: "",
+  sourceAccountId: "",
+  amount: "",
+  description: "",
+  note: "",
+};
+
 function CashBankListPage() {
   const [cashBankAccounts, setCashBankAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -55,6 +65,10 @@ function CashBankListPage() {
   const [form, setForm] = useState(initialForm);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [formMode, setFormMode] = useState("create");
+
+  const [cashInForm, setCashInForm] = useState(initialCashInForm);
+  const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
+  const [isCashInConfirmOpen, setIsCashInConfirmOpen] = useState(false);
 
   const [selectedCashBankAccount, setSelectedCashBankAccount] = useState(null);
   const [isDeactivateConfirmOpen, setIsDeactivateConfirmOpen] = useState(false);
@@ -76,6 +90,35 @@ function CashBankListPage() {
         account.normalBalance === "DEBIT"
     );
   }, [accounts]);
+
+  const activeCashBankAccounts = useMemo(() => {
+    return cashBankAccounts.filter(
+      (item) =>
+        item.status === "ACTIVE" &&
+        item.accountId &&
+        item.account?.status === "ACTIVE"
+    );
+  }, [cashBankAccounts]);
+
+  const selectedCashInCashBankAccount = useMemo(() => {
+    return activeCashBankAccounts.find(
+      (item) => item.id === cashInForm.cashBankAccountId
+    );
+  }, [activeCashBankAccounts, cashInForm.cashBankAccountId]);
+
+  const cashInSourceAccounts = useMemo(() => {
+    return accounts.filter((account) => {
+      if (account.status !== "ACTIVE") {
+        return false;
+      }
+
+      if (selectedCashInCashBankAccount?.accountId === account.id) {
+        return false;
+      }
+
+      return ["LIABILITY", "EQUITY", "REVENUE"].includes(account.type);
+    });
+  }, [accounts, selectedCashInCashBankAccount]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -211,6 +254,25 @@ function CashBankListPage() {
     setIsFormModalOpen(true);
   };
 
+  const handleOpenCashInModal = () => {
+  setCashInForm({
+    ...initialCashInForm,
+    cashBankAccountId: activeCashBankAccounts[0]?.id || "",
+    sourceAccountId: "",
+  });
+  setErrorMessage("");
+  setIsCashInModalOpen(true);
+};
+
+const handleCloseCashInModal = () => {
+  if (isSubmitting) {
+    return;
+  }
+
+  setIsCashInModalOpen(false);
+  setCashInForm(initialCashInForm);
+};
+
   const handleOpenEditModal = useCallback((row) => {
     setForm({
       id: row.id,
@@ -253,6 +315,24 @@ function CashBankListPage() {
           type: value,
           bankName: value === "CASH" ? "" : current.bankName,
           accountNumber: value === "CASH" ? "" : current.accountNumber,
+        };
+      }
+
+      return {
+        ...current,
+        [name]: value,
+      };
+    });
+    };
+
+    const handleCashInFormChange = (event) => {
+    const { name, value } = event.target;
+
+    setCashInForm((current) => {
+      if (name === "amount") {
+        return {
+          ...current,
+          amount: formatAmountInput(value),
         };
       }
 
@@ -322,11 +402,149 @@ function CashBankListPage() {
     }
   };
 
+  const handleSubmitCashIn = async (event) => {
+    event.preventDefault();
+
+    if (!cashInForm.entryDate) {
+      setErrorMessage("Tanggal kas masuk wajib diisi.");
+      return;
+    }
+
+    if (!cashInForm.cashBankAccountId) {
+      setErrorMessage("Pilih tujuan kas/bank terlebih dahulu.");
+      return;
+    }
+
+    if (!selectedCashInCashBankAccount?.accountId) {
+      setErrorMessage("Akun accounting kas/bank tujuan tidak valid.");
+      return;
+    }
+
+    if (!cashInForm.sourceAccountId) {
+      setErrorMessage("Pilih akun sumber dana terlebih dahulu.");
+      return;
+    }
+
+    const amount = parseAmountInput(cashInForm.amount);
+
+    if (amount <= 0) {
+      setErrorMessage("Nominal kas masuk harus lebih dari 0.");
+      return;
+    }
+
+    if (!cashInForm.description.trim()) {
+      setErrorMessage("Deskripsi kas masuk wajib diisi.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const payload = {
+        entryDate: cashInForm.entryDate,
+        description: cashInForm.description.trim(),
+        lines: [
+          {
+            accountId: selectedCashInCashBankAccount.accountId,
+            debit: amount,
+            credit: 0,
+            note:
+              cashInForm.note.trim() ||
+              `Kas masuk ke ${selectedCashInCashBankAccount.name}`,
+          },
+          {
+            accountId: cashInForm.sourceAccountId,
+            debit: 0,
+            credit: amount,
+            note: cashInForm.note.trim() || cashInForm.description.trim(),
+          },
+        ],
+      };
+
+      await journalEntryApi.create(payload);
+      await fetchData();
+
+      setIsCashInModalOpen(false);
+      setCashInForm(initialCashInForm);
+      setSuccessTitle("Kas masuk manual berhasil dicatat");
+      setSuccessDescription(
+        "Saldo kas/bank sudah diperbarui dan jurnal manual berhasil dibuat."
+      );
+      setIsSuccessModalOpen(true);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmCashIn = async () => {
+    const amount = parseAmountInput(cashInForm.amount);
+
+    if (!selectedCashInCashBankAccount?.accountId) {
+      setIsCashInConfirmOpen(false);
+      setErrorMessage("Akun accounting kas/bank tujuan tidak valid.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const payload = {
+        entryDate: cashInForm.entryDate,
+        description: cashInForm.description.trim(),
+        lines: [
+          {
+            accountId: selectedCashInCashBankAccount.accountId,
+            debit: amount,
+            credit: 0,
+            note:
+              cashInForm.note.trim() ||
+              `Kas masuk ke ${selectedCashInCashBankAccount.name}`,
+          },
+          {
+            accountId: cashInForm.sourceAccountId,
+            debit: 0,
+            credit: amount,
+            note: cashInForm.note.trim() || cashInForm.description.trim(),
+          },
+        ],
+      };
+
+      await journalEntryApi.create(payload);
+      await fetchData();
+
+      setIsCashInConfirmOpen(false);
+      setIsCashInModalOpen(false);
+      setCashInForm(initialCashInForm);
+
+      setSuccessTitle("Kas masuk manual berhasil dicatat");
+      setSuccessDescription(
+        "Saldo kas/bank sudah diperbarui dan jurnal manual berhasil dibuat."
+      );
+      setIsSuccessModalOpen(true);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleOpenDeactivateConfirm = useCallback((row) => {
     setSelectedCashBankAccount(row);
     setErrorMessage("");
     setIsDeactivateConfirmOpen(true);
   }, []);
+
+  const handleCloseCashInConfirm = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsCashInConfirmOpen(false);
+  };
 
   const handleConfirmDeactivate = async () => {
     if (!selectedCashBankAccount) {
@@ -473,10 +691,17 @@ function CashBankListPage() {
       title="Kas & Bank"
       description="Kelola akun kas/bank operasional, saldo berjalan, rekening bank, dan akun accounting terkait."
       actions={
-        <Button variant="primary" onClick={handleOpenCreateModal}>
-          <Plus size={17} />
-          Tambah Kas/Bank
-        </Button>
+        <div className="cash-bank-page-actions">
+          <Button variant="secondary" onClick={handleOpenCashInModal}>
+            <Plus size={17} />
+            Kas Masuk Manual
+          </Button>
+
+          <Button variant="primary" onClick={handleOpenCreateModal}>
+            <Plus size={17} />
+            Tambah Kas/Bank
+          </Button>
+        </div>
       }
       filters={
         <FilterBar>
@@ -706,6 +931,192 @@ function CashBankListPage() {
             document.body
           )
         : null}
+
+      {isCashInModalOpen
+        ? createPortal(
+            <div className="cash-bank-modal-backdrop">
+              <form className="cash-bank-form-modal" onSubmit={handleSubmitCashIn}>
+                <div className="cash-bank-modal-header">
+                  <div>
+                    <span>Kas Masuk Manual</span>
+                    <strong>Input Dana Masuk</strong>
+                    <p>Catat dana masuk ke kas/bank di luar transaksi penjualan.</p>
+                  </div>
+
+                  <button type="button" onClick={handleCloseCashInModal}>
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="cash-bank-form-grid">
+                  <label>
+                    Tanggal
+                    <input
+                      type="date"
+                      name="entryDate"
+                      value={cashInForm.entryDate}
+                      onChange={handleCashInFormChange}
+                    />
+                  </label>
+
+                  <label>
+                    Tujuan Kas/Bank
+                    <select
+                      name="cashBankAccountId"
+                      value={cashInForm.cashBankAccountId}
+                      onChange={handleCashInFormChange}
+                    >
+                      <option value="">Pilih kas/bank tujuan</option>
+                      {activeCashBankAccounts.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} - {item.account?.code || "-"} - {item.account?.name || "-"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Akun Sumber Dana
+                    <select
+                      name="sourceAccountId"
+                      value={cashInForm.sourceAccountId}
+                      onChange={handleCashInFormChange}
+                    >
+                      <option value="">Pilih akun sumber dana</option>
+                      {cashInSourceAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.code} - {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Nominal
+                    <input
+                      name="amount"
+                      value={cashInForm.amount}
+                      onChange={handleCashInFormChange}
+                      placeholder="Contoh: 1.500.000"
+                      inputMode="numeric"
+                    />
+                  </label>
+
+                  <label className="is-full">
+                    Deskripsi
+                    <input
+                      name="description"
+                      value={cashInForm.description}
+                      onChange={handleCashInFormChange}
+                      placeholder="Contoh: Suntikan dana owner"
+                    />
+                  </label>
+
+                  <label className="is-full">
+                    Catatan
+                    <textarea
+                      name="note"
+                      value={cashInForm.note}
+                      onChange={handleCashInFormChange}
+                      rows={3}
+                      placeholder="Opsional"
+                    />
+                  </label>
+                </div>
+
+                <div className="cash-bank-modal-footer">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleCloseCashInModal}
+                      disabled={isSubmitting}
+                    >
+                      Batal
+                    </Button>
+
+                    <Button type="submit" variant="primary" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 size={16} /> : <Save size={16} />}
+                      Simpan Kas Masuk
+                    </Button>
+                  </div>
+              </form>
+            </div>,
+            document.body
+          )
+        : null}
+
+        {isCashInConfirmOpen
+          ? createPortal(
+              <div className="return-confirm-backdrop">
+                <div className="return-confirm-modal">
+                  {isSubmitting ? (
+                    <>
+                      <div className="return-confirm-icon is-processing">
+                        <Loader2 className="return-loading-icon" size={38} />
+                      </div>
+
+                      <h2>Menyimpan kas masuk...</h2>
+
+                      <p>
+                        Sistem sedang mencatat kas masuk manual dan membuat jurnal.
+                        Mohon tunggu sebentar.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="return-confirm-icon is-warning">
+                        <AlertTriangle size={34} />
+                      </div>
+
+                      <h2>Tambahkan kas masuk manual?</h2>
+
+                      <p>
+                        Pastikan nominal, tujuan kas/bank, dan akun sumber dana sudah benar.
+                      </p>
+
+                      <div className="return-confirm-summary">
+                        <div>
+                          <span>Tujuan Kas/Bank</span>
+                          <strong>{selectedCashInCashBankAccount?.name || "-"}</strong>
+                        </div>
+
+                        <div>
+                          <span>Nominal</span>
+                          <strong>{formatCurrency(parseAmountInput(cashInForm.amount))}</strong>
+                        </div>
+
+                        <div>
+                          <span>Deskripsi</span>
+                          <strong>{cashInForm.description || "-"}</strong>
+                        </div>
+                      </div>
+
+                      <div className="return-confirm-actions">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleCloseCashInConfirm}
+                          disabled={isSubmitting}
+                        >
+                          Tidak
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="primary"
+                          onClick={handleConfirmCashIn}
+                          disabled={isSubmitting}
+                        >
+                          Ya, Simpan
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
 
       {isDeactivateConfirmOpen
         ? createPortal(

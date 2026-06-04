@@ -1,8 +1,5 @@
 const prisma = require("../../config/prisma");
 const {
-  generateJournalEntryNumber,
-} = require("../../utils/generateJournalEntryNumber");
-const {
   createJournalEntryWithLines,
 } = require("../../utils/accountingJournal");
 
@@ -147,51 +144,19 @@ const updateCashBankBalances = async (tx, lines) => {
 const createJournalEntry = async ({
   entryDate,
   description,
-  sourceType,
-  sourceId,
   lines,
   createdById,
 }) => {
   return prisma.$transaction(async (tx) => {
-    await validateAccounts(tx, lines);
-
-    const totalDebit = lines.reduce((total, line) => total + line.debit, 0);
-    const totalCredit = lines.reduce((total, line) => total + line.credit, 0);
-
-    if (totalDebit !== totalCredit) {
-      const error = new Error("Total debit and credit must be balanced");
-      error.status = 400;
-      throw error;
-    }
-
-    await updateCashBankBalances(tx, lines);
-
-    const entryNumber = generateJournalEntryNumber();
-
-    const journalEntry = await tx.journalEntry.create({
-      data: {
-        entryNumber,
-        entryDate,
-        description,
-        sourceType,
-        sourceId,
-        createdById,
-        lines: {
-          create: lines.map((line) => ({
-            accountId: line.accountId,
-            debit: line.debit,
-            credit: line.credit,
-            note: line.note,
-          })),
-        },
-      },
-    });
-
-    return tx.journalEntry.findUnique({
-      where: {
-        id: journalEntry.id,
-      },
-      include: getJournalEntryInclude(),
+    return createJournalEntryWithLines({
+      tx,
+      entryDate,
+      description,
+      sourceType: "MANUAL",
+      sourceId: null,
+      reversalOfId: null,
+      lines,
+      createdById,
     });
   });
 };

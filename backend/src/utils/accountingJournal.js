@@ -2,6 +2,91 @@ const {
   generateJournalEntryNumber,
 } = require("./generateJournalEntryNumber");
 
+const normalizeJournalLines = (lines) => {
+  if (!Array.isArray(lines)) {
+    const error = new Error("Journal lines must be an array");
+    error.status = 400;
+    throw error;
+  }
+
+  return lines.map((line, index) => {
+    const debit = Number(line.debit || 0);
+    const credit = Number(line.credit || 0);
+
+    if (Number.isNaN(debit) || Number.isNaN(credit)) {
+      const error = new Error(
+        `Debit/credit value is invalid on line ${index + 1}`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    return {
+      accountId: line.accountId,
+      debit,
+      credit,
+      note: line.note || null,
+    };
+  });
+};
+
+const validateJournalLines = (lines) => {
+  if (lines.length < 2) {
+    const error = new Error("Journal entry must have at least 2 lines");
+    error.status = 400;
+    throw error;
+  }
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  lines.forEach((line, index) => {
+    if (!line.accountId) {
+      const error = new Error(`Account is required on line ${index + 1}`);
+      error.status = 400;
+      throw error;
+    }
+
+    if (line.debit < 0 || line.credit < 0) {
+      const error = new Error(
+        `Debit/credit cannot be negative on line ${index + 1}`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (line.debit > 0 && line.credit > 0) {
+      const error = new Error(
+        `Line ${index + 1} cannot have debit and credit at the same time`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (line.debit === 0 && line.credit === 0) {
+      const error = new Error(
+        `Line ${index + 1} must have either debit or credit`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    totalDebit += line.debit;
+    totalCredit += line.credit;
+  });
+
+  if (totalDebit !== totalCredit) {
+    const error = new Error("Total debit and credit must be balanced");
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    totalDebit,
+    totalCredit,
+  };
+};
+
 const validateJournalAccounts = async (tx, lines) => {
   const accountIds = lines.map((line) => line.accountId);
   const uniqueAccountIds = [...new Set(accountIds)];
@@ -32,16 +117,44 @@ const validateJournalAccounts = async (tx, lines) => {
 };
 
 const updateCashBankBalances = async (tx, lines) => {
-  const cashBankAccounts = await tx.cashBankAccount.findMany({
+  const accountIds = [...new Set(lines.map((line) => line.accountId))];
+
+  const relatedCashBankAccounts = await tx.cashBankAccount.findMany({
     where: {
-      status: "ACTIVE",
+      accountId: {
+        in: accountIds,
+      },
     },
     include: {
       account: true,
     },
   });
 
-  for (const cashBankAccount of cashBankAccounts) {
+  for (const cashBankAccount of relatedCashBankAccounts) {
+    if (cashBankAccount.status !== "ACTIVE") {
+      const error = new Error(
+        `Cash/bank account ${cashBankAccount.name} is inactive`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (!cashBankAccount.account) {
+      const error = new Error(
+        `Accounting account for cash/bank ${cashBankAccount.name} was not found`
+      );
+      error.status = 404;
+      throw error;
+    }
+
+    if (cashBankAccount.account.status !== "ACTIVE") {
+      const error = new Error(
+        `Accounting account for cash/bank ${cashBankAccount.name} is inactive`
+      );
+      error.status = 400;
+      throw error;
+    }
+
     const relatedLines = lines.filter(
       (line) => line.accountId === cashBankAccount.accountId
     );
@@ -92,44 +205,23 @@ const createJournalEntryWithLines = async ({
   lines,
   createdById,
 }) => {
-  const normalizedLines = lines.map((line) => ({
-    accountId: line.accountId,
-    debit: line.debit || 0,
-    credit: line.credit || 0,
-    note: line.note,
-  }));
+  const normalizedLines = normalizeJournalLines(lines);
 
+  validateJournalLines(normalizedLines);
   await validateJournalAccounts(tx, normalizedLines);
-
-  const totalDebit = normalizedLines.reduce(
-    (total, line) => total + line.debit,
-    0
-  );
-
-  const totalCredit = normalizedLines.reduce(
-    (total, line) => total + line.credit,
-    0
-  );
-
-  if (totalDebit !== totalCredit) {
-    const error = new Error("Total debit and credit must be balanced");
-    error.status = 400;
-    throw error;
-  }
-
   await updateCashBankBalances(tx, normalizedLines);
 
   const entryNumber = generateJournalEntryNumber();
 
   return tx.journalEntry.create({
-  data: {
-    entryNumber,
-    entryDate,
-    description,
-    sourceType,
-    sourceId,
-    reversalOfId,
-    createdById,
+    data: {
+      entryNumber,
+      entryDate: entryDate || new Date(),
+      description,
+      sourceType,
+      sourceId,
+      reversalOfId,
+      createdById,
       lines: {
         create: normalizedLines,
       },
@@ -202,6 +294,18 @@ const getCashBankAccountForPayment = async (
 
   if (cashBankAccount.status !== "ACTIVE") {
     const error = new Error("Cash/bank account is inactive");
+    error.status = 400;
+    throw error;
+  }
+
+  if (!cashBankAccount.accountId || !cashBankAccount.account) {
+    const error = new Error("Cash/bank account is not linked to accounting account");
+    error.status = 400;
+    throw error;
+  }
+
+  if (cashBankAccount.account.status !== "ACTIVE") {
+    const error = new Error("Linked accounting account is inactive");
     error.status = 400;
     throw error;
   }
