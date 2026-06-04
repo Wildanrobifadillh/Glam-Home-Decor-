@@ -61,86 +61,6 @@ const getJournalEntryById = async (id) => {
   return journalEntry;
 };
 
-const validateAccounts = async (tx, lines) => {
-  const accountIds = lines.map((line) => line.accountId);
-  const uniqueAccountIds = [...new Set(accountIds)];
-
-  const accounts = await tx.account.findMany({
-    where: {
-      id: {
-        in: uniqueAccountIds,
-      },
-    },
-  });
-
-  if (accounts.length !== uniqueAccountIds.length) {
-    const error = new Error("One or more accounts were not found");
-    error.status = 404;
-    throw error;
-  }
-
-  for (const account of accounts) {
-    if (account.status !== "ACTIVE") {
-      const error = new Error(`Account ${account.name} is inactive`);
-      error.status = 400;
-      throw error;
-    }
-  }
-
-  return accounts;
-};
-
-const updateCashBankBalances = async (tx, lines) => {
-  const cashBankAccounts = await tx.cashBankAccount.findMany({
-    where: {
-      status: "ACTIVE",
-    },
-    include: {
-      account: true,
-    },
-  });
-
-  for (const cashBankAccount of cashBankAccounts) {
-    const relatedLines = lines.filter(
-      (line) => line.accountId === cashBankAccount.accountId
-    );
-
-    if (relatedLines.length === 0) {
-      continue;
-    }
-
-    const totalDebit = relatedLines.reduce(
-      (total, line) => total + line.debit,
-      0
-    );
-
-    const totalCredit = relatedLines.reduce(
-      (total, line) => total + line.credit,
-      0
-    );
-
-    const balanceChange = totalDebit - totalCredit;
-    const newBalance = cashBankAccount.currentBalance + balanceChange;
-
-    if (newBalance < 0) {
-      const error = new Error(
-        `Cash/bank balance is not enough for ${cashBankAccount.name}`
-      );
-      error.status = 400;
-      throw error;
-    }
-
-    await tx.cashBankAccount.update({
-      where: {
-        id: cashBankAccount.id,
-      },
-      data: {
-        currentBalance: newBalance,
-      },
-    });
-  }
-};
-
 const createJournalEntry = async ({
   entryDate,
   description,
@@ -148,7 +68,7 @@ const createJournalEntry = async ({
   createdById,
 }) => {
   return prisma.$transaction(async (tx) => {
-    return createJournalEntryWithLines({
+    const createdJournalEntry = await createJournalEntryWithLines({
       tx,
       entryDate,
       description,
@@ -157,6 +77,13 @@ const createJournalEntry = async ({
       reversalOfId: null,
       lines,
       createdById,
+    });
+
+    return tx.journalEntry.findUnique({
+      where: {
+        id: createdJournalEntry.id,
+      },
+      include: getJournalEntryInclude(),
     });
   });
 };
