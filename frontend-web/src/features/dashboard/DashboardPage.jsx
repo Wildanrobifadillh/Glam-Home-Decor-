@@ -12,6 +12,13 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { settingsApi } from "../settings/settings.api";
+import {
+  getAllowedModuleKeysByRole,
+  getSidebarFooterItemsByModuleKeys,
+  getSidebarGroupsByModuleKeys,
+} from "../../constants/sidebarMenu";
 
 import dashboardHero from "../../assets/images/login-background.png";
 import Button from "../../components/ui/Button";
@@ -34,8 +41,29 @@ const periodOptions = [
   },
 ];
 
+const getFirstAccessiblePath = (moduleKeys = []) => {
+  const filteredModuleKeys = moduleKeys.filter((key) => key !== "dashboard");
+
+  const groups = getSidebarGroupsByModuleKeys(filteredModuleKeys);
+  const footerItems = getSidebarFooterItemsByModuleKeys(filteredModuleKeys);
+
+  return (
+    groups[0]?.items?.[0]?.path ||
+    footerItems[0]?.path ||
+    "/login"
+  );
+};
+
 function DashboardPage() {
   const user = authStore.getUser();
+  const navigate = useNavigate();
+  
+  const [hasDashboardAccess, setHasDashboardAccess] = useState(
+    user?.role === "OWNER"
+  );
+  const [isCheckingDashboardAccess, setIsCheckingDashboardAccess] = useState(
+    user?.role !== "OWNER"
+  );
 
   const [periodType, setPeriodType] = useState("MONTH");
   const [selectedDate, setSelectedDate] = useState(getTodayDateInput());
@@ -71,6 +99,84 @@ function DashboardPage() {
     }
   }, [periodType, selectedDate, user?.role]);
 
+    useEffect(() => {
+    let isMounted = true;
+
+    const checkDashboardAccess = async () => {
+      if (!user?.role) {
+        if (isMounted) {
+          setHasDashboardAccess(false);
+          setIsCheckingDashboardAccess(false);
+        }
+        return;
+      }
+
+      if (user.role === "OWNER") {
+        if (isMounted) {
+          setHasDashboardAccess(true);
+          setIsCheckingDashboardAccess(false);
+        }
+        return;
+      }
+
+      setIsCheckingDashboardAccess(true);
+
+      try {
+        const response = await settingsApi.getMyPermissions();
+        const responseData = response.data?.data || response.data;
+
+        const myPermissions =
+          responseData?.myPermissions ||
+          responseData?.rolePermissions ||
+          responseData;
+
+        const allowedModuleKeys =
+          myPermissions?.permissions
+            ?.filter((permission) => permission.canAccess)
+            .map((permission) => permission.key) || [];
+
+        const fallbackModuleKeys = getAllowedModuleKeysByRole(user.role);
+        const finalModuleKeys =
+          allowedModuleKeys.length > 0 ? allowedModuleKeys : fallbackModuleKeys;
+
+        const canAccessDashboard = finalModuleKeys.includes("dashboard");
+
+        if (!isMounted) {
+          return;
+        }
+
+        setHasDashboardAccess(canAccessDashboard);
+        setIsCheckingDashboardAccess(false);
+
+        if (!canAccessDashboard) {
+          const redirectPath = getFirstAccessiblePath(finalModuleKeys);
+          navigate(redirectPath, { replace: true });
+        }
+      } catch {
+        const fallbackModuleKeys = getAllowedModuleKeysByRole(user.role);
+        const canAccessDashboard = fallbackModuleKeys.includes("dashboard");
+
+        if (!isMounted) {
+          return;
+        }
+
+        setHasDashboardAccess(canAccessDashboard);
+        setIsCheckingDashboardAccess(false);
+
+        if (!canAccessDashboard) {
+          const redirectPath = getFirstAccessiblePath(fallbackModuleKeys);
+          navigate(redirectPath, { replace: true });
+        }
+      }
+    };
+
+    checkDashboardAccess();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, user?.role]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       fetchOwnerDashboard();
@@ -81,7 +187,15 @@ function DashboardPage() {
     };
   }, [fetchOwnerDashboard]);
 
-  if (user?.role !== "OWNER") {
+    if (user?.role !== "OWNER") {
+    if (isCheckingDashboardAccess) {
+      return null;
+    }
+
+    if (!hasDashboardAccess) {
+      return null;
+    }
+
     return <NonOwnerDashboard user={user} />;
   }
 
