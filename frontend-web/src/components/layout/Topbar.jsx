@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, Clock3, Menu } from "lucide-react";
+import { CalendarDays, Clock3, Menu } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -7,7 +7,6 @@ import { sidebarGroups } from "../../constants/sidebarMenu";
 function Topbar() {
   const location = useLocation();
   const title = getTopbarTitle(location.pathname);
-  const isDashboardPage = location.pathname === "/dashboard";
 
   const [now, setNow] = useState(() => new Date());
 
@@ -50,13 +49,6 @@ function Topbar() {
       </div>
 
       <div className="topbar-v3-actions">
-        {isDashboardPage ? (
-          <button type="button" className="topbar-v3-notification">
-            <Bell size={19} />
-            <span>3</span>
-          </button>
-        ) : null}
-
         <div className="topbar-v3-date">
           <div className="topbar-date-section">
             <CalendarDays size={17} />

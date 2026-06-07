@@ -1156,14 +1156,13 @@ const getDefaultDocumentSettingData = () => ({
   resetNumberMonthly: true,
 
   defaultPaperSize: "F4",
-  alternatePaperSize: "A4",
-  invoiceCopies: 3,
-  maxItemsF4: 12,
-  maxItemsA4: 8,
-
-  copyLabel1: "LEMBAR 1 - PELANGGAN",
-  copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
-  copyLabel3: "LEMBAR 3 - ARSIP TOKO",
+    alternatePaperSize: "A4",
+    invoiceCopies: 1,
+    maxItemsF4: 12,
+    maxItemsA4: 8,
+    copyLabel1: "INVOICE",
+    copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
+    copyLabel3: "LEMBAR 3 - ARSIP TOKO",
 
   thankYouNote:
     "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",

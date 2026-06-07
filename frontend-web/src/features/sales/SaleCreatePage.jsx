@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   CalendarDays,
   Clock3,
@@ -12,8 +13,10 @@ import {
   UserRound,
   WalletCards,
   Wrench,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../../components/ui/Button";
@@ -92,6 +95,9 @@ const dateTimeLabel = useMemo(() => {
   const [formError, setFormError] = useState("");
   const [formMessage, setFormMessage] = useState("");
 
+  const [isSaleSummaryOpen, setIsSaleSummaryOpen] = useState(false);
+  const [isSaleConfirmOpen, setIsSaleConfirmOpen] = useState(false);
+
   const fetchInitialData = useCallback(async () => {
     setIsLoadingInitialData(true);
     setFormError("");
@@ -155,6 +161,19 @@ const dateTimeLabel = useMemo(() => {
       window.clearTimeout(timeoutId);
     };
   }, [fetchInitialData]);
+
+  useEffect(() => {
+    if (!isSaleSummaryOpen && !isSaleConfirmOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isSaleSummaryOpen, isSaleConfirmOpen]);
 
   const categories = useMemo(() => {
     const categoryNames = products
@@ -255,6 +274,19 @@ const effectiveCashBankAccountId =
   const selectedCustomer = customers.find(
     (customer) => customer.id === selectedCustomerId
   );
+
+  const totalQuantity = useMemo(() => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  }, [cartItems]);
+
+  const selectedCashBankAccount = useMemo(() => {
+    return activeCashBankAccounts.find(
+      (account) => account.id === effectiveCashBankAccountId
+    );
+  }, [activeCashBankAccounts, effectiveCashBankAccountId]);
+
+  const paymentMethodLabel =
+    paymentMethod === "TRANSFER" ? "Transfer" : "Tunai";
 
   const handleAddProduct = (product) => {
     setFormError("");
@@ -400,22 +432,16 @@ const effectiveCashBankAccountId =
   setPaymentMethod(nextPaymentMethod);
 
   const defaultAccountId = getDefaultCashBankAccountId(
-    activeCashBankAccounts,
-    nextPaymentMethod
-  );
+      activeCashBankAccounts,
+      nextPaymentMethod
+    );
 
-  setCashBankAccountId(defaultAccountId);
-};
+    setCashBankAccountId(defaultAccountId);
+  };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    setFormError("");
-    setFormMessage("");
-
+  const validateSaleBeforeSubmit = () => {
     if (!cartItems.length) {
-      setFormError("Keranjang masih kosong. Pilih minimal satu produk.");
-      return;
+      return "Keranjang masih kosong. Pilih minimal satu produk.";
     }
 
     const invalidItem = cartItems.find(
@@ -423,25 +449,25 @@ const effectiveCashBankAccountId =
     );
 
     if (invalidItem) {
-      setFormError("Qty dan harga jual setiap item wajib lebih dari 0.");
-      return;
+      return "Qty dan harga jual setiap item wajib lebih dari 0.";
     }
 
     if (totalAmount <= 0) {
-      setFormError("Total penjualan wajib lebih dari 0.");
-      return;
+      return "Total penjualan wajib lebih dari 0.";
     }
 
     if (isTransferPayment && normalizedCashReceivedAmount > totalAmount) {
-      setFormError("Nominal transfer tidak boleh melebihi total tagihan.");
-      return;
+      return "Nominal transfer tidak boleh melebihi total tagihan.";
     }
 
     if (paidAmount > 0 && !effectiveCashBankAccountId) {
-      setFormError("Akun kas/bank wajib dipilih jika ada pembayaran.");
-      return;
+      return "Akun kas/bank wajib dipilih jika ada pembayaran.";
     }
 
+    return "";
+  };
+
+  const buildSalePayload = () => {
     const validAdditionalCosts = additionalCosts
       .map((cost) => ({
         name: cost.name.trim(),
@@ -450,7 +476,7 @@ const effectiveCashBankAccountId =
       }))
       .filter((cost) => cost.name && cost.amount > 0);
 
-    const payload = {
+    return {
       customerId: selectedCustomerId || undefined,
       customerName: selectedCustomerId
         ? undefined
@@ -473,9 +499,10 @@ const effectiveCashBankAccountId =
         paidAmount > 0 ? effectiveCashBankAccountId : undefined,
       discountAmount: calculatedDiscountAmount,
       taxAmount: calculatedTaxAmount,
-      dueDate: remainingAmount > 0 && customerForm.dueDate
-        ? customerForm.dueDate
-        : undefined,
+      dueDate:
+        remainingAmount > 0 && customerForm.dueDate
+          ? customerForm.dueDate
+          : undefined,
       additionalCosts: validAdditionalCosts,
       note: customerForm.note.trim() || undefined,
       items: cartItems.map((item) => ({
@@ -484,20 +511,72 @@ const effectiveCashBankAccountId =
         sellingPrice: item.sellingPrice,
       })),
     };
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    setFormError("");
+    setFormMessage("");
+
+    const validationError = validateSaleBeforeSubmit();
+
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    setIsSaleSummaryOpen(true);
+  };
+
+  const handleCloseSaleSummary = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSaleSummaryOpen(false);
+  };
+
+  const handleOpenSaleConfirm = () => {
+    setIsSaleSummaryOpen(false);
+    setIsSaleConfirmOpen(true);
+  };
+
+  const handleCloseSaleConfirm = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSaleConfirmOpen(false);
+  };
+
+  const handleConfirmSubmitSale = async () => {
+    setFormError("");
+    setFormMessage("");
+
+    const validationError = validateSaleBeforeSubmit();
+
+    if (validationError) {
+      setIsSaleConfirmOpen(false);
+      setFormError(validationError);
+      return;
+    }
+
+    const payload = buildSalePayload();
 
     setIsSubmitting(true);
 
     try {
-  const response = await saleApi.create(payload);
+      const response = await saleApi.create(payload);
 
-  const responseData = response.data?.data || response.data;
-  const createdSale =
-    responseData?.sale ||
-    responseData?.data?.sale ||
-    responseData?.data ||
-    responseData;
+      const responseData = response.data?.data || response.data;
+      const createdSale =
+        responseData?.sale ||
+        responseData?.data?.sale ||
+        responseData?.data ||
+        responseData;
 
-  if (createdSale?.id) {
+      if (createdSale?.id) {
         try {
           await saleApi.generateInvoice(createdSale.id);
         } catch (invoiceError) {
@@ -505,6 +584,8 @@ const effectiveCashBankAccountId =
         }
       }
 
+      setIsSaleConfirmOpen(false);
+      setIsSaleSummaryOpen(false);
       setFormMessage("Penjualan berhasil disimpan.");
       navigate("/sales");
     } catch (error) {
@@ -590,66 +671,10 @@ const effectiveCashBankAccountId =
               </div>
             </Card>
 
-            {isLoadingInitialData ? (
-              <Card className="sale-pos-loading-card">
-                <Loader2 size={24} className="sale-pos-spin" />
-                <strong>Memuat produk kasir...</strong>
-              </Card>
-            ) : (
-              <div className="sale-pos-product-grid">
-                {filteredProducts.map((product) => {
-                  const isSelected = selectedProductIds.has(product.id);
-
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      className={isSelected ? "sale-product-card is-selected" : "sale-product-card"}
-                      onClick={() => handleAddProduct(product)}
-                      disabled={Number(product.stock || 0) <= 0}
-                    >
-                    <div className="sale-product-image">
-                      {product.imageUrl ? (
-                        <img
-                          src={resolveImageUrl(product.imageUrl)}
-                          alt={product.name}
-                        />
-                      ) : (
-                        <div className="sale-product-placeholder">
-                          <Package size={30} />
-                          <span>No Photo</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="sale-product-body">
-                      <strong>{product.name}</strong>
-                      <span>{product.supplierCode || product.searchCode || "-"}</span>
-                    </div>
-
-                    <div className="sale-product-meta">
-                      <span>
-                        Stok {Number(product.stock || 0)} {product.unit || ""}
-                      </span>
-                      <strong>{formatCurrency(product.sellingPrice)}</strong>
-                    </div>
-
-                    <div className="sale-product-add">
-                      <Plus size={15} />
-                      {isSelected ? "Tambah Lagi" : "Tambah"}
-                    </div>
-                      </button>
-                    );
-                  })}
-              </div>
-            )}
-          </section>
-
-          <aside className="sale-pos-cart">
-            <Card className="sale-pos-cart-card">
+            <Card className="sale-pos-receipt-card">
               <div className="sale-cart-header">
                 <div>
-                  <span>Keranjang</span>
+                  <span>Receipt</span>
                   <h2>Receipt Transaksi</h2>
                 </div>
 
@@ -714,6 +739,75 @@ const effectiveCashBankAccountId =
                       disabled={Boolean(selectedCustomerId)}
                     />
                   </label>
+                </div>
+              </div>
+            </Card>
+
+            {isLoadingInitialData ? (
+              <Card className="sale-pos-loading-card">
+                <Loader2 size={24} className="sale-pos-spin" />
+                <strong>Memuat produk kasir...</strong>
+              </Card>
+            ) : (
+              <div className="sale-pos-product-grid">
+                {filteredProducts.map((product) => {
+                  const isSelected = selectedProductIds.has(product.id);
+
+                  return (
+                    <button
+                      key={product.id}
+                      type="button"
+                      className={isSelected ? "sale-product-card is-selected" : "sale-product-card"}
+                      onClick={() => handleAddProduct(product)}
+                      disabled={Number(product.stock || 0) <= 0}
+                    >
+                    <div className="sale-product-image">
+                      {product.imageUrl ? (
+                        <img
+                          src={resolveImageUrl(product.imageUrl)}
+                          alt={product.name}
+                        />
+                      ) : (
+                        <div className="sale-product-placeholder">
+                          <Package size={30} />
+                          <span>No Photo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sale-product-body">
+                      <strong>{product.name}</strong>
+                      <span>{product.supplierCode || product.searchCode || "-"}</span>
+                    </div>
+
+                    <div className="sale-product-meta">
+                      <span>
+                        Stok {Number(product.stock || 0)} {product.unit || ""}
+                      </span>
+                      <strong>{formatCurrency(product.sellingPrice)}</strong>
+                    </div>
+
+                    <div className="sale-product-add">
+                      <Plus size={15} />
+                      {isSelected ? "Tambah Lagi" : "Tambah"}
+                    </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </section>
+
+          <aside className="sale-pos-cart">
+            <Card className="sale-pos-cart-card">
+            <div className="sale-cart-header">
+                <div>
+                  <span>Keranjang</span>
+                  <h2>Item Transaksi</h2>
+                </div>
+
+                <div className="sale-cart-icon">
+                  <ShoppingCart size={22} />
                 </div>
               </div>
 
@@ -808,7 +902,7 @@ const effectiveCashBankAccountId =
                 )}
               </div>
 
-              <div className="sale-extra-panel">
+             <div className="sale-extra-panel">
                 <div className="sale-panel-title">
                   <Wrench size={16} />
                   <span>Biaya Tambahan / Jasa</span>
@@ -881,10 +975,10 @@ const effectiveCashBankAccountId =
                 ) : null}
               </div>
 
-              <div className="sale-payment-panel">
+              <div className="sale-adjustment-panel">
                 <div className="sale-panel-title">
                   <WalletCards size={16} />
-                  <span>Pembayaran</span>
+                  <span>Diskon & Pajak</span>
                 </div>
 
                 <div className="sale-payment-grid">
@@ -917,21 +1011,50 @@ const effectiveCashBankAccountId =
                       <span>%</span>
                     </div>
                   </label>
+                </div>
+              </div>
 
-                  <label>
-                      {isTransferPayment ? "Nominal Transfer" : "Uang Diterima"}
-                      <input
-                      value={formatInputCurrency(cashReceivedAmount)}
-                      onChange={(event) =>
-                        setCashReceivedAmount(toNumber(event.target.value))
-                      }
-                      placeholder="0"
-                      inputMode="numeric"
+              <div className="sale-subtotal-panel">
+                <div className="sale-panel-title">
+                  <Package size={16} />
+                  <span>Informasi Subtotal</span>
+                </div>
+
+                <div className="sale-summary-panel sale-summary-panel-preview">
+                  <SummaryRow label="Subtotal Barang" value={itemSubtotalAmount} />
+                  <SummaryRow
+                    label={`Diskon (${normalizedDiscountPercent}%)`}
+                    value={calculatedDiscountAmount}
+                    muted
+                  />
+                  <SummaryRow
+                    label={`Pajak (${normalizedTaxPercent}%)`}
+                    value={calculatedTaxAmount}
+                  />
+                  <SummaryRow label="Biaya Tambahan" value={additionalCostAmount} />
+                  <SummaryRow label="Total Sementara" value={totalAmount} strong />
+                </div>
+              </div>
+
+              <div className="sale-payment-panel">
+                <div className="sale-panel-title">
+                  <WalletCards size={16} />
+                  <span>Pembayaran</span>
+                </div>
+
+                <div className="sale-payment-grid">
+                  <label className="sale-payment-full">
+                    Catatan
+                    <input
+                      name="note"
+                      value={customerForm.note}
+                      onChange={handleCustomerChange}
+                      placeholder="Opsional"
                     />
                   </label>
 
                   <label>
-                    Metode
+                    Metode Pembayaran
                     <select
                       value={paymentMethod}
                       onChange={handlePaymentMethodChange}
@@ -939,6 +1062,18 @@ const effectiveCashBankAccountId =
                       <option value="CASH">Tunai</option>
                       <option value="TRANSFER">Transfer</option>
                     </select>
+                  </label>
+
+                  <label>
+                    {isTransferPayment ? "Nominal Transfer" : "Nominal Pembayaran"}
+                    <input
+                      value={formatInputCurrency(cashReceivedAmount)}
+                      onChange={(event) =>
+                        setCashReceivedAmount(toNumber(event.target.value))
+                      }
+                      placeholder="0"
+                      inputMode="numeric"
+                    />
                   </label>
 
                   {paidAmount > 0 ? (
@@ -962,58 +1097,27 @@ const effectiveCashBankAccountId =
                       </select>
                     </label>
                   ) : null}
-
-                  {remainingAmount > 0 ? (
-                    <div className="sale-payment-full sale-receivable-group">
-                      <div className="sale-receivable-title">Informasi Piutang</div>
-
-                      <label>
-                        Jatuh Tempo Piutang
-                        <input
-                          type="date"
-                          name="dueDate"
-                          value={customerForm.dueDate}
-                          onChange={handleCustomerChange}
-                        />
-                      </label>
-                    </div>
-                  ) : null}
-
-                  <label className="sale-payment-full">
-                    Catatan
-                    <input
-                      name="note"
-                      value={customerForm.note}
-                      onChange={handleCustomerChange}
-                      placeholder="Opsional"
-                    />
-                  </label>
                 </div>
               </div>
 
               <div className="sale-summary-panel">
-                <SummaryRow label="Subtotal Barang" value={itemSubtotalAmount} />
-                <SummaryRow
-                  label={`Diskon (${normalizedDiscountPercent}%)`}
-                  value={calculatedDiscountAmount}
-                  muted
-                />
+                <div className="sale-panel-title">
+                  <ShoppingCart size={16} />
+                  <span>Ringkasan Final</span>
+                </div>
 
-                <SummaryRow
-                  label={`Pajak (${normalizedTaxPercent}%)`}
-                  value={calculatedTaxAmount}
-                />
-                <SummaryRow label="Biaya Tambahan" value={additionalCostAmount} />
                 <SummaryRow label="Total Tagihan" value={totalAmount} strong />
                 <SummaryRow label="Dibayar Sistem" value={paidAmount} />
+
                 {isCashPayment ? (
-                    <SummaryRow
-                      label="Kembalian"
-                      value={changeAmount}
-                      success={changeAmount > 0}
-                      strong={changeAmount > 0}
-                    />
-                  ) : null}
+                  <SummaryRow
+                    label="Kembalian"
+                    value={changeAmount}
+                    success={changeAmount > 0}
+                    strong={changeAmount > 0}
+                  />
+                ) : null}
+
                 <SummaryRow
                   label="Sisa / Piutang"
                   value={remainingAmount}
@@ -1023,6 +1127,27 @@ const effectiveCashBankAccountId =
 
                 <div className="sale-status-pill">{paymentStatusLabel}</div>
               </div>
+
+              {remainingAmount > 0 ? (
+                <div className="sale-receivable-panel">
+                  <div className="sale-panel-title">
+                    <CalendarDays size={16} />
+                    <span>Jatuh Tempo Piutang</span>
+                  </div>
+
+                  <div className="sale-payment-grid">
+                    <label className="sale-payment-full">
+                      Tanggal Jatuh Tempo
+                      <input
+                        type="date"
+                        name="dueDate"
+                        value={customerForm.dueDate}
+                        onChange={handleCustomerChange}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
 
               <Button
                 type="submit"
@@ -1035,6 +1160,193 @@ const effectiveCashBankAccountId =
           </aside>
         </div>
       </form>
+      {isSaleSummaryOpen
+        ? createPortal(
+            <div className="sale-modal-backdrop">
+              <div className="sale-modal sale-summary-modal">
+                <div className="sale-modal-header">
+                  <div>
+                    <span>Ringkasan Penjualan</span>
+                    <strong>Periksa sebelum simpan</strong>
+                    <p>
+                      Pastikan customer, pembayaran, dan total transaksi sudah benar.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="sale-modal-close"
+                    onClick={handleCloseSaleSummary}
+                    disabled={isSubmitting}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="sale-modal-body">
+                  <div className="sale-modal-summary-grid">
+                    <div className="sale-modal-summary-card">
+                      <span>Customer</span>
+                      <strong>
+                        {selectedCustomer?.name ||
+                          customerForm.customerName ||
+                          "Walk-in Customer"}
+                      </strong>
+                      <p>{customerForm.customerPhone || selectedCustomer?.phone || "-"}</p>
+                    </div>
+
+                    <div className="sale-modal-summary-card">
+                      <span>Jumlah Item</span>
+                      <strong>{cartItems.length}</strong>
+                      <p>{totalQuantity} qty total</p>
+                    </div>
+
+                    <div className="sale-modal-summary-card">
+                      <span>Total Tagihan</span>
+                      <strong>{formatCurrency(totalAmount)}</strong>
+                      <p>Setelah diskon, pajak, dan biaya tambahan</p>
+                    </div>
+
+                    <div className="sale-modal-summary-card">
+                      <span>Dibayar</span>
+                      <strong>{formatCurrency(paidAmount)}</strong>
+                      <p>{paymentMethodLabel}</p>
+                    </div>
+
+                    <div className="sale-modal-summary-card">
+                      <span>Sisa / Piutang</span>
+                      <strong className={remainingAmount > 0 ? "text-danger" : ""}>
+                        {formatCurrency(remainingAmount)}
+                      </strong>
+                      <p>{paymentStatusLabel}</p>
+                    </div>
+
+                    <div className="sale-modal-summary-card">
+                      <span>Akun Kas/Bank</span>
+                      <strong>{selectedCashBankAccount?.name || "-"}</strong>
+                      <p>
+                        {paidAmount > 0
+                          ? selectedCashBankAccount?.bankName ||
+                            selectedCashBankAccount?.type ||
+                            "-"
+                          : "Belum ada pembayaran"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="sale-modal-detail-list">
+                    {remainingAmount > 0 && customerForm.dueDate ? (
+                      <div className="sale-modal-detail-row">
+                        <span>Jatuh Tempo Piutang</span>
+                        <strong>{customerForm.dueDate}</strong>
+                      </div>
+                    ) : null}
+
+                    <div className="sale-modal-detail-row">
+                      <span>Subtotal Barang</span>
+                      <strong>{formatCurrency(itemSubtotalAmount)}</strong>
+                    </div>
+
+                    <div className="sale-modal-detail-row">
+                      <span>Diskon</span>
+                      <strong>{formatCurrency(calculatedDiscountAmount)}</strong>
+                    </div>
+
+                    <div className="sale-modal-detail-row">
+                      <span>Pajak</span>
+                      <strong>{formatCurrency(calculatedTaxAmount)}</strong>
+                    </div>
+
+                    <div className="sale-modal-detail-row">
+                      <span>Biaya Tambahan</span>
+                      <strong>{formatCurrency(additionalCostAmount)}</strong>
+                    </div>
+
+                    {customerForm.note ? (
+                      <div className="sale-modal-detail-row is-note">
+                        <span>Catatan</span>
+                        <strong>{customerForm.note}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="sale-modal-footer">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleCloseSaleSummary}
+                    disabled={isSubmitting}
+                  >
+                    Kembali Edit
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleOpenSaleConfirm}
+                    disabled={isSubmitting}
+                  >
+                    Lanjut Simpan
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {isSaleConfirmOpen
+        ? createPortal(
+            <div className="sale-modal-backdrop">
+              <div className="sale-modal sale-confirm-modal">
+                <div className="sale-confirm-icon">
+                  {isSubmitting ? (
+                    <Loader2 className="sale-modal-spin" size={28} />
+                  ) : (
+                    <AlertTriangle size={28} />
+                  )}
+                </div>
+
+                <div className="sale-confirm-content">
+                  <span>Konfirmasi Penjualan</span>
+                  <strong>
+                    {isSubmitting
+                      ? "Menyimpan penjualan..."
+                      : "Apakah Anda yakin ingin menyimpan penjualan ini?"}
+                  </strong>
+
+                  <p>
+                    {isSubmitting
+                      ? "Sistem sedang menyimpan transaksi, membuat invoice, dan mencatat data penjualan."
+                      : "Pastikan semua item, nominal pembayaran, dan informasi customer sudah benar. Stok akan berkurang setelah transaksi disimpan."}
+                  </p>
+                </div>
+
+                <div className="sale-modal-footer">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleCloseSaleConfirm}
+                    disabled={isSubmitting}
+                  >
+                    Batal
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleConfirmSubmitSale}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Menyimpan..." : "Ya, Simpan Penjualan"}
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </main>
   );
 }

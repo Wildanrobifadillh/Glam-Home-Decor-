@@ -1046,19 +1046,15 @@ const getSaleInvoicePreview = async (saleId) => {
     additionalCostAmount;
 
   const paperSize = documentSetting.defaultPaperSize;
-  const maxItems =
-    paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
+    const maxItems =
+      paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
 
-  const copyLabels = [
-    documentSetting.copyLabel1,
-    documentSetting.copyLabel2,
-    documentSetting.copyLabel3,
-  ]
-    .slice(0, documentSetting.invoiceCopies)
-    .map((label, index) => ({
-      copyNumber: index + 1,
-      label,
-    }));
+    const copyLabels = [
+      {
+        copyNumber: 1,
+        label: documentSetting.copyLabel1 || "INVOICE",
+      },
+    ];
 
   return {
     invoice: {
@@ -1073,8 +1069,9 @@ const getSaleInvoicePreview = async (saleId) => {
       paymentStatus: sale.paymentStatus,
       paperSize,
       maxItems,
-      invoiceCopies: documentSetting.invoiceCopies,
+      invoiceCopies: 1,
       copyLabels,
+      layout: "landscape",
       isOfficialInvoice: Boolean(sale.invoiceNumber),
     },
     store: {

@@ -67,28 +67,23 @@ const drawCell = (
 };
 
 const drawInvoiceReceiverSection = (doc, x, y, width) => {
-  doc.font("Helvetica-Bold").fontSize(10);
+  doc.font("Helvetica-Bold").fontSize(9);
   drawText(doc, "Penerima", x, y, {
     width,
     align: "center",
   });
 
-  const lineY = y + 92;
+  const lineY = y + 44;
 
-  drawLine(doc, x + 55, lineY, x + width - 55, lineY);
+  drawLine(doc, x + 42, lineY, x + width - 42, lineY);
 
-  doc.font("Helvetica").fontSize(9);
-  drawText(doc, "(__________________________)", x, lineY + 8, {
+  doc.font("Helvetica").fontSize(8);
+  drawText(doc, "Nama Jelas & Tanda Tangan", x, lineY + 8, {
     width,
     align: "center",
   });
 
-  drawText(doc, "Nama Jelas & Tanda Tangan", x, lineY + 26, {
-    width,
-    align: "center",
-  });
-
-  return lineY + 42;
+  return lineY + 20;
 };
 
 const drawInvoiceSenderSection = (
@@ -100,34 +95,34 @@ const drawInvoiceSenderSection = (
   responsiblePersonName,
   responsiblePersonTitle
 ) => {
-  doc.font("Helvetica").fontSize(9);
+  doc.font("Helvetica").fontSize(8);
   drawText(doc, "Hormat kami,", x, y, {
     width,
     align: "center",
   });
 
-  drawText(doc, storeName || "Glam Home Decor", x, y + 18, {
+  drawText(doc, storeName || "Glam Home Decor", x, y + 14, {
     width,
     align: "center",
   });
 
-  const lineY = y + 92;
+  const lineY = y + 44;
 
-  drawLine(doc, x + 55, lineY, x + width - 55, lineY);
+  drawLine(doc, x + 42, lineY, x + width - 42, lineY);
 
-  doc.font("Helvetica-Bold").fontSize(9);
-  drawText(doc, responsiblePersonName || "-", x, lineY + 10, {
+  doc.font("Helvetica-Bold").fontSize(8);
+  drawText(doc, responsiblePersonName || "-", x, lineY + 8, {
     width,
     align: "center",
   });
 
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, responsiblePersonTitle || "Penanggung Jawab", x, lineY + 28, {
+  doc.font("Helvetica").fontSize(7);
+  drawText(doc, responsiblePersonTitle || "Penanggung Jawab", x, lineY + 20, {
     width,
     align: "center",
   });
 
-  return lineY + 42;
+  return lineY + 30;
 };
 
 const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
@@ -135,31 +130,35 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     invoicePreview;
 
   const pageWidth = doc.page.width;
-  const margin = 36;
-  const contentWidth = pageWidth - margin * 2;
+    const margin = 28;
+    const contentWidth = pageWidth - margin * 2;
 
-  let y = margin;
+    let y = margin;
 
-  doc.font("Helvetica-Bold").fontSize(16);
-  drawText(doc, store.name, margin, y, { width: 300 });
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, store.address, margin, y + 20, { width: 330 });
-  drawText(doc, `Telp: ${store.phone || "-"}`, margin, y + 42, { width: 220 });
-  drawText(doc, store.socialMedia || "", margin, y + 54, { width: 260 });
+    doc.font("Helvetica-Bold").fontSize(14);
+      drawText(doc, store.name, margin, y, { width: 320 });
 
-  doc.font("Helvetica-Bold").fontSize(18);
-  drawText(doc, "INVOICE", pageWidth - margin - 170, y, {
-    width: 170,
-    align: "right",
-  });
+      doc.font("Helvetica").fontSize(7);
+      drawText(doc, store.address, margin, y + 16, { width: 420 });
+      drawText(doc, `Telp: ${store.phone || "-"}`, margin, y + 30, { width: 220 });
+      drawText(doc, `Email: ${store.email || "-"}`, margin, y + 42, { width: 260 });
+      drawText(doc, store.socialMedia || "", margin, y + 54, { width: 260 });
 
-  doc.font("Helvetica").fontSize(9);
-  drawText(doc, copyLabel.label, pageWidth - margin - 220, y + 26, {
-    width: 220,
-    align: "right",
-  });
+      doc.font("Helvetica-Bold").fontSize(16);
+      drawText(doc, "INVOICE", pageWidth - margin - 150, y, {
+        width: 150,
+        align: "right",
+      });
 
-  y += 78;
+  if (invoice.invoiceCopies > 1 && copyLabel?.label) {
+    doc.font("Helvetica").fontSize(8);
+    drawText(doc, copyLabel.label, pageWidth - margin - 220, y + 20, {
+      width: 220,
+      align: "right",
+    });
+  }
+
+  y += 72;
   drawLine(doc, margin, y, pageWidth - margin, y);
   y += 12;
 
@@ -177,35 +176,75 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   drawText(doc, "Jatuh Tempo", margin, y + 42);
   drawText(doc, `: ${formatDate(invoice.dueDate)}`, margin + 95, y + 42);
 
-  const rightX = pageWidth / 2 + 20;
+  const leftInfoBottom = y + 42;
 
-  drawText(doc, "Kepada", rightX, y);
-  drawText(doc, `: ${customer.name || "-"}`, rightX + 85, y);
+  const rightBlockX = pageWidth / 2 + 10;
+  const rightLabelWidth = 70;
+  const rightColonX = rightBlockX + rightLabelWidth;
+  const rightValueX = rightColonX + 14;
+  const rightValueWidth = pageWidth - margin - rightValueX;
 
-  drawText(doc, "Telepon", rightX, y + 14);
-  drawText(doc, `: ${customer.phone || "-"}`, rightX + 85, y + 14);
-
-  drawText(doc, "Alamat", rightX, y + 28);
-  drawText(doc, `: ${customer.address || "-"}`, rightX + 85, y + 28, {
-    width: 180,
+  drawText(doc, "Kepada", rightBlockX, y);
+  drawText(doc, ":", rightColonX, y);
+  drawText(doc, customer.name || "-", rightValueX, y, {
+    width: rightValueWidth,
+    align: "left",
   });
 
-  y += 70;
+  drawText(doc, "Telepon", rightBlockX, y + 14);
+  drawText(doc, ":", rightColonX, y + 14);
+  drawText(doc, customer.phone || "-", rightValueX, y + 14, {
+    width: rightValueWidth,
+    align: "left",
+  });
 
-    const tableX = margin;
-    const tableWidth = contentWidth;
-    const headerHeight = 24;
-    const rowHeight = 24;
+  drawText(doc, "Alamat", rightBlockX, y + 28);
+  drawText(doc, ":", rightColonX, y + 28);
 
-    const columnWidths = {
-    no: 28,
-    code: 78,
-    name: 185,
-    qty: 38,
-    unit: 48,
-    price: 72,
-    subtotal: 74,
-    };
+  doc.font("Helvetica").fontSize(9);
+  const addressText = customer.address || "-";
+  const addressHeight = doc.heightOfString(addressText, {
+    width: rightValueWidth,
+    align: "left",
+  });
+
+  drawText(doc, addressText, rightValueX, y + 28, {
+    width: rightValueWidth,
+    align: "left",
+  });
+
+  const rightInfoBottom = y + 28 + addressHeight;
+    y = Math.max(leftInfoBottom, rightInfoBottom) + 12;
+
+    drawLine(doc, margin, y, pageWidth - margin, y);
+    y += 12;
+
+    const headerHeight = 18;
+      const rowHeight = 17;
+
+      const columnWidths = {
+        no: 26,
+        code: 76,
+        name: 180,
+        qty: 36,
+        unit: 46,
+        price: 70,
+        subtotal: 76,
+      };
+
+      const tableWidth = Object.values(columnWidths).reduce(
+        (total, width) => total + width,
+        0
+      );
+
+      const labelWidth = 115;
+      const valueWidth = 110;
+      const summaryWidth = labelWidth + valueWidth;
+      const summaryGap = 28;
+      const groupWidth = tableWidth + summaryGap + summaryWidth;
+      const groupStartX = margin + (contentWidth - groupWidth) / 2;
+
+      const tableX = groupStartX;
 
     const columns = {
     no: tableX,
@@ -303,6 +342,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     );
 
     y += headerHeight;
+    const tableStartY = y - headerHeight;
 
     items.forEach((item) => {
     doc.rect(tableX, y, tableWidth, rowHeight).stroke();
@@ -344,7 +384,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
         columnWidths.price,
         rowHeight,
         {
-        align: "right",
+        align: "center",
         }
     );
 
@@ -356,127 +396,134 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
         columnWidths.subtotal,
         rowHeight,
         {
-        align: "right",
+        align: "center",
         }
     );
 
     y += rowHeight;
     });
 
-    y += 12;
+    const tableBottomY = y;
 
-  const summaryX = pageWidth - margin - 230;
-  const labelWidth = 115;
-  const valueWidth = 110;
-  const summaryRow = 15;
+      const summaryX = tableX + tableWidth + summaryGap;
+      const summaryRow = 15;
 
-  doc.font("Helvetica").fontSize(9);
+      let summaryY = tableStartY + 6;
 
-  const drawSummaryRow = (label, value, isBold = false) => {
-    if (isBold) {
-      doc.font("Helvetica-Bold");
-    } else {
-      doc.font("Helvetica");
-    }
+      doc.font("Helvetica").fontSize(9);
 
-    drawText(doc, label, summaryX, y, { width: labelWidth });
-    drawText(doc, formatCurrency(value), summaryX + labelWidth, y, {
-      width: valueWidth,
-      align: "right",
-    });
+      const drawSummaryRow = (label, value, isBold = false) => {
+        if (isBold) {
+          doc.font("Helvetica-Bold");
+        } else {
+          doc.font("Helvetica");
+        }
 
-    y += summaryRow;
-  };
+        drawText(doc, label, summaryX, summaryY, { width: labelWidth });
+        drawText(doc, formatCurrency(value), summaryX + labelWidth, summaryY, {
+          width: valueWidth,
+          align: "right",
+        });
 
-  drawSummaryRow("Subtotal Barang", summary.itemSubtotalAmount);
-  drawSummaryRow("Diskon", summary.discountAmount);
-  drawSummaryRow("Pajak", summary.taxAmount);
+        summaryY += summaryRow;
+      };
 
-  summary.additionalCosts.forEach((cost) => {
-    drawSummaryRow(cost.name, cost.amount);
-  });
+      drawSummaryRow("Subtotal Barang", summary.itemSubtotalAmount);
+      drawSummaryRow("Diskon", summary.discountAmount);
+      drawSummaryRow("Pajak", summary.taxAmount);
 
-  drawLine(doc, summaryX, y, summaryX + labelWidth + valueWidth, y);
-  y += 5;
+      summary.additionalCosts.forEach((cost) => {
+        drawSummaryRow(cost.name, cost.amount);
+      });
 
-  drawSummaryRow("Total Tagihan", summary.totalAmount, true);
-  drawSummaryRow("Dibayar", payment.paidAmount);
-  drawSummaryRow("Sisa", payment.remainingAmount, true);
+      drawLine(
+        doc,
+        summaryX,
+        summaryY,
+        summaryX + labelWidth + valueWidth,
+        summaryY
+      );
+      summaryY += 5;
 
-  y += 10;
+      drawSummaryRow("Total Tagihan", summary.totalAmount, true);
+      drawSummaryRow("Dibayar", payment.paidAmount);
+      drawSummaryRow("Sisa", payment.remainingAmount, true);
 
-  const paymentInfoY = y;
-  doc.font("Helvetica-Bold").fontSize(9);
-  drawText(doc, "Informasi Pembayaran", margin, paymentInfoY);
+      const summaryBottomY = summaryY;
+      y = Math.max(tableBottomY, summaryBottomY) + 12;
 
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, `Metode: ${payment.paymentMethod}`, margin, paymentInfoY + 14);
-  drawText(doc, `Status: ${payment.paymentStatus}`, margin, paymentInfoY + 28);
+        const paymentInfoY = y;
+          doc.font("Helvetica-Bold").fontSize(9);
+          drawText(doc, "Informasi Pembayaran", margin, paymentInfoY);
 
-  if (invoiceBankAccount) {
-    drawText(
-      doc,
-      `Transfer: ${invoiceBankAccount.bankName || "-"} ${invoiceBankAccount.accountNumber || "-"} a.n. ${invoiceBankAccount.accountHolderName || "-"}`,
-      margin,
-      paymentInfoY + 42,
-      { width: 330 }
-    );
-  }
+          doc.font("Helvetica").fontSize(8);
+          drawText(doc, `Metode: ${payment.paymentMethod}`, margin, paymentInfoY + 14);
+          drawText(doc, `Status: ${payment.paymentStatus}`, margin, paymentInfoY + 28);
 
-  y += 70;
+          y += 42;
 
-  doc.font("Helvetica-Bold").fontSize(8);
-  drawText(doc, "Note:", margin, y, { width: contentWidth });
-  y += 12;
+        const shortNote = [
+          notes.transactionProofNote ||
+            "Invoice ini merupakan bukti transaksi resmi.",
+          notes.paymentTerms ||
+            "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+          notes.complaintTerms ||
+            "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
+          notes.returnTerms ||
+            "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
+        ]
+          .filter(Boolean)
+          .join(", ");
 
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, notes.transactionProofNote, margin, y, { width: contentWidth });
-  y += 12;
-  drawText(doc, notes.paymentTerms, margin, y, { width: contentWidth });
-  y += 12;
-  drawText(doc, notes.complaintTerms, margin, y, { width: contentWidth });
-  y += 12;
-  drawText(doc, notes.returnTerms, margin, y, { width: contentWidth });
-  y += 18;
+        doc.font("Helvetica-Bold").fontSize(8);
+        drawText(doc, "Catatan:", margin, y, { width: 180 });
+        y += 10;
 
-  drawText(doc, notes.thankYouNote, margin, y, { width: contentWidth });
+        doc.font("Helvetica").fontSize(7);
+        drawText(doc, shortNote, margin, y, {
+          width: 520,
+          align: "left",
+        });
 
-    const footerY = y + 28;
-    const blockWidth = 220;
-    const gap = contentWidth - blockWidth * 2;
+          const footerY = y + 34;
+            const blockWidth = 210;
+            const signatureGap = 10;
+            const rightPadding = 0;
 
-    const leftX = margin;
-    const rightXFooter = margin + blockWidth + gap;
+            const rightXFooter = margin + contentWidth - blockWidth - rightPadding;
+            const leftX = rightXFooter - blockWidth - signatureGap;
 
-    // kiri
-    drawInvoiceReceiverSection(doc, leftX, footerY, blockWidth);
+            drawInvoiceReceiverSection(doc, leftX, footerY, blockWidth);
 
-    // kanan
-    drawInvoiceSenderSection(
-      doc,
-      rightXFooter,
-      footerY,
-      blockWidth,
-      store.name,
-      authorization.responsiblePersonName,
-      authorization.responsiblePersonTitle
-    );
+            // kanan
+            drawInvoiceSenderSection(
+              doc,
+              rightXFooter,
+              footerY,
+              blockWidth,
+              store.name,
+              authorization.responsiblePersonName,
+              authorization.responsiblePersonTitle
+            );
 
-  // doc.font("Helvetica").fontSize(7);
-  // drawText(doc, `Dicetak oleh: ${createdBy.name}`, margin, doc.page.height - 40);
-};
+        // doc.font("Helvetica").fontSize(7);
+        // drawText(doc, `Dicetak oleh: ${createdBy.name}`, margin, doc.page.height - 40);
+      };
 
 const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
   return new Promise((resolve, reject) => {
     try {
       const paperSize = invoicePreview.invoice.paperSize || "F4";
-      const pageSize = PAPER_SIZES[paperSize] || PAPER_SIZES.F4;
+        const pageSize = PAPER_SIZES[paperSize] || PAPER_SIZES.F4;
+        const layout =
+          invoicePreview.invoice.layout === "landscape" ? "landscape" : "portrait";
 
-      const doc = new PDFDocument({
-        size: pageSize,
-        margin: 36,
-        bufferPages: true,
-      });
+        const doc = new PDFDocument({
+          size: pageSize,
+          layout,
+          margin: 30,
+          bufferPages: true,
+        });
 
       const chunks = [];
 
@@ -484,16 +531,10 @@ const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      invoicePreview.invoice.copyLabels.forEach((copyLabel, index) => {
-        if (index > 0) {
-          doc.addPage();
-        }
-
-        drawInvoiceCopy({
-          doc,
-          invoicePreview,
-          copyLabel,
-        });
+      drawInvoiceCopy({
+        doc,
+        invoicePreview,
+        copyLabel: invoicePreview.invoice.copyLabels[0] || null,
       });
 
       doc.end();

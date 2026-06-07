@@ -16,6 +16,8 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
+import Pagination from "../../components/ui/Pagination";
+import { usePagination } from "../../hooks/usePagination";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { downloadFile, getFileNameFromContentDisposition } from "../../utils/downloadFile";
 import { formatCurrency } from "../../utils/formatCurrency";
@@ -201,6 +203,10 @@ function SaleReportPage() {
       return matchesSearch && matchesDate;
     });
   }, [reportData.sales, debouncedSearch, filters.dateFrom, filters.dateTo]);
+
+  const salesReportPagination = usePagination(filteredSales, {
+    pageSize: 15,
+  });
 
   const summary = calculateSaleSummary(filteredSales);
 
@@ -441,10 +447,19 @@ function SaleReportPage() {
       <Table
         className="purchase-report-table"
         columns={columns}
-        data={filteredSales}
+        data={salesReportPagination.paginatedData}
         isLoading={isLoading}
         emptyTitle="Laporan penjualan kosong"
         emptyDescription="Tidak ada data penjualan yang cocok dengan filter saat ini."
+      />
+      <Pagination
+        page={salesReportPagination.currentPage}
+        totalPages={salesReportPagination.totalPages}
+        totalItems={salesReportPagination.totalItems}
+        startItem={salesReportPagination.startItem}
+        endItem={salesReportPagination.endItem}
+        pageSize={salesReportPagination.pageSize}
+        onPageChange={salesReportPagination.setCurrentPage}
       />
     </ListPageLayout>
   );

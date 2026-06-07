@@ -9697,3 +9697,479 @@ textarea {
     justify-content: center;
   }
 }
+
+/* ==================================================
+   SALES / POS SUMMARY CARD OVERRIDE
+================================================== */
+
+.sale-list-summary-grid {
+  margin-bottom: 18px;
+}
+
+.sale-summary-card {
+  min-height: 150px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(122, 106, 97, 0.13);
+  box-shadow: 0 14px 35px rgba(21, 19, 15, 0.05);
+  text-align: center;
+}
+
+.sale-summary-card > div {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.sale-summary-card span {
+  margin-bottom: 0;
+  color: rgba(74, 58, 49, 0.68);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sale-summary-card strong {
+  color: var(--glam-text);
+  font-size: 25px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.sale-summary-card p {
+  max-width: 210px;
+  margin: 0;
+  color: var(--glam-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.sale-summary-card-count > div {
+  color: #a95533;
+}
+
+.sale-summary-card-sales > div {
+  color: #8d3f25;
+}
+
+.sale-summary-card-paid > div {
+  color: #2f8a4d;
+}
+
+.sale-summary-card-remaining > div {
+  color: #b93a2f;
+}
+
+/* ==================================================
+   SALES REPORT SUMMARY CARD OVERRIDE
+================================================== */
+
+.purchase-report-summary-card {
+  min-height: 120px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.purchase-report-summary-card span,
+.purchase-report-summary-card strong,
+.purchase-report-summary-card p {
+  text-align: center;
+}
+
+.purchase-report-summary-card span {
+  margin-bottom: 0;
+}
+
+.purchase-report-summary-card p {
+  margin: 0;
+  max-width: 220px;
+}
+
+/* ==================================================
+   SALES / POS RECEIPT PANEL
+================================================== */
+
+.sale-pos-receipt-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.sale-pos-receipt-card .sale-customer-panel {
+  margin: 0;
+}
+
+@media (max-width: 1080px) {
+  .sale-pos-receipt-card {
+    order: 2;
+  }
+}
+
+/* ==================================================
+   SALES / POS RIGHT PANEL RESTRUCTURE
+================================================== */
+
+.sale-adjustment-panel,
+.sale-subtotal-panel,
+.sale-payment-panel,
+.sale-summary-panel {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(169, 85, 51, 0.18);
+  background: #fff2df;
+}
+
+.sale-summary-panel-preview {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.sale-subtotal-panel .sale-summary-row:first-child,
+.sale-summary-panel .sale-summary-row:first-child {
+  padding-top: 0;
+}
+
+.sale-subtotal-panel .sale-summary-row:last-child,
+.sale-summary-panel .sale-summary-row:last-child {
+  padding-bottom: 0;
+}
+
+.sale-payment-panel .sale-payment-grid,
+.sale-adjustment-panel .sale-payment-grid {
+  margin-top: 0;
+}
+
+/* ==================================================
+   SALES / POS RECEIVABLE PANEL
+================================================== */
+
+.sale-receivable-panel {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px dashed rgba(185, 58, 47, 0.26);
+  background: #fff4ee;
+}
+
+/* ==================================================
+   SALES / POS SUBMIT MODALS
+================================================== */
+
+.sale-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: start center;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(34, 26, 20, 0.36);
+  backdrop-filter: blur(4px);
+  animation: saleModalBackdropIn 0.18s ease;
+}
+
+.sale-modal {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 24px;
+  border: 1px solid rgba(169, 85, 51, 0.16);
+  background: #fffdfa;
+  box-shadow: 0 24px 60px rgba(35, 26, 18, 0.18);
+  animation: saleModalIn 0.22s ease;
+}
+
+.sale-summary-modal {
+  width: min(100%, 960px);
+}
+
+.sale-confirm-modal {
+  width: min(100%, 520px);
+  margin-top: 10vh;
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+
+.sale-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid rgba(122, 106, 97, 0.12);
+  background: #fffdfa;
+}
+
+.sale-modal-header span,
+.sale-confirm-content span {
+  display: block;
+  margin-bottom: 6px;
+  color: #a95533;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sale-modal-header strong,
+.sale-confirm-content strong {
+  display: block;
+  color: var(--glam-text);
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.sale-modal-header p,
+.sale-confirm-content p {
+  margin: 8px 0 0;
+  color: var(--glam-muted);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.6;
+}
+
+.sale-modal-close {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(185, 58, 47, 0.1);
+  color: #b93a2f;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.sale-modal-close:hover {
+  transform: translateY(-1px);
+  background: rgba(185, 58, 47, 0.14);
+}
+
+.sale-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px 24px;
+}
+
+.sale-modal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sale-modal-summary-card {
+  padding: 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(169, 85, 51, 0.14);
+  background: #fff4e8;
+  text-align: center;
+}
+
+.sale-modal-summary-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(74, 58, 49, 0.68);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sale-modal-summary-card strong {
+  display: block;
+  color: var(--glam-text);
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.sale-modal-summary-card p {
+  margin: 6px 0 0;
+  color: var(--glam-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.sale-modal-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sale-modal-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: #fff8ee;
+  border: 1px solid rgba(169, 85, 51, 0.1);
+}
+
+.sale-modal-detail-row span {
+  color: var(--glam-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.sale-modal-detail-row strong {
+  color: var(--glam-text);
+  font-size: 13px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.sale-modal-detail-row.is-note {
+  align-items: flex-start;
+}
+
+.sale-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(122, 106, 97, 0.12);
+  background: #fffdfa;
+}
+
+.sale-confirm-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: rgba(185, 58, 47, 0.12);
+  color: #b93a2f;
+}
+
+.sale-confirm-content {
+  display: grid;
+  gap: 4px;
+}
+
+.sale-modal-spin {
+  animation: saleModalSpin 0.8s linear infinite;
+}
+
+@keyframes saleModalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes saleModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes saleModalSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .sale-modal-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .sale-modal-backdrop {
+    padding: 12px;
+  }
+
+  .sale-modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  .sale-modal-header,
+  .sale-modal-body,
+  .sale-modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .sale-modal-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-modal-detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sale-modal-detail-row strong {
+    text-align: left;
+  }
+
+  .sale-modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .sale-modal-footer .btn,
+  .sale-modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ==================================================
+   SALES / POS CONFIRM MODAL BUTTON ALIGNMENT
+================================================== */
+
+.sale-confirm-modal .sale-modal-footer {
+  justify-content: center;
+  padding-top: 20px;
+}
+
+.sale-confirm-modal .sale-modal-footer .btn,
+.sale-confirm-modal .sale-modal-footer button {
+  min-width: 170px;
+}
+
+@media (max-width: 720px) {
+  .sale-confirm-modal .sale-modal-footer {
+    justify-content: stretch;
+  }
+
+  .sale-confirm-modal .sale-modal-footer .btn,
+  .sale-confirm-modal .sale-modal-footer button {
+    min-width: 0;
+    width: 100%;
+  }
+}
