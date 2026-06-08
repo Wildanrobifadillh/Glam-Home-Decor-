@@ -16,7 +16,9 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
+import Pagination from "../../components/ui/Pagination";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import {
@@ -190,6 +192,10 @@ function PurchaseReportPage() {
 }, [reportData.purchases, debouncedSearch, filters.dateFrom, filters.dateTo]);
 
 const summary = calculatePurchaseSummary(filteredPurchases);
+
+const purchaseReportPagination = usePagination(filteredPurchases, {
+  pageSize: 15,
+});
 
   const columns = useMemo(
     () => [
@@ -374,10 +380,19 @@ const summary = calculatePurchaseSummary(filteredPurchases);
       <Table
         className="purchase-report-table"
         columns={columns}
-        data={filteredPurchases}
+        data={purchaseReportPagination.paginatedData}
         isLoading={isLoading}
         emptyTitle="Laporan pembelian kosong"
         emptyDescription="Tidak ada data pembelian yang cocok dengan filter saat ini."
+      />
+      <Pagination
+        page={purchaseReportPagination.currentPage}
+        totalPages={purchaseReportPagination.totalPages}
+        totalItems={purchaseReportPagination.totalItems}
+        startItem={purchaseReportPagination.startItem}
+        endItem={purchaseReportPagination.endItem}
+        pageSize={purchaseReportPagination.pageSize}
+        onPageChange={purchaseReportPagination.setCurrentPage}
       />
     </ListPageLayout>
   );

@@ -19,6 +19,7 @@ import { purchaseApi } from "./purchase.api";
 
 const createEmptyItem = () => ({
   rowId: crypto.randomUUID(),
+  categoryId: "",
   productId: "",
   quantity: "",
   purchasePrice: "",
@@ -29,6 +30,7 @@ const initialFormValues = {
   supplierInvoiceNumber: "",
   paidAmount: "",
   paymentMethod: "CASH",
+  dueDate: "",
   cashBankAccountId: "",
   note: "",
 };
@@ -145,6 +147,34 @@ function PurchaseCreatePage() {
     );
   }, [cashBankAccounts]);
 
+  const filteredPaymentAccounts = useMemo(() => {
+  const targetType = formValues.paymentMethod === "TRANSFER" ? "BANK" : "CASH";
+
+  return activeCashBankAccounts.filter((account) => account.type === targetType);
+    }, [activeCashBankAccounts, formValues.paymentMethod]);
+  
+  const productCategories = useMemo(() => {
+  const categoryMap = new Map();
+
+  products.forEach((product) => {
+    if (!product.categoryId) {
+      return;
+    }
+
+    if (!categoryMap.has(product.categoryId)) {
+      categoryMap.set(product.categoryId, {
+        id: product.categoryId,
+        name: product.category?.name || "Tanpa Kategori",
+      });
+    }
+  });
+
+  return Array.from(categoryMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+}, [products]);
+
+
   const totalAmount = useMemo(() => {
     return items.reduce((total, item) => {
       const quantity = Number(item.quantity || 0);
@@ -159,18 +189,63 @@ function PurchaseCreatePage() {
   const paymentStatus = getPaymentStatusPreview(totalAmount, paidAmount);
 
   const handleFormChange = (event) => {
-    const { name, value } = event.target;
+  const { name, value } = event.target;
 
-    setFormValues((currentValues) => ({
+  setFormValues((currentValues) => {
+    const nextValues = {
       ...currentValues,
       [name]: value,
-      ...(name === "paidAmount" && Number(value || 0) <= 0
-        ? {
-            cashBankAccountId: "",
-          }
-        : {}),
-    }));
-  };
+    };
+
+    if (name === "paidAmount") {
+      const nextPaidAmount = Number(value || 0);
+
+      if (nextPaidAmount <= 0) {
+        nextValues.cashBankAccountId = "";
+        return nextValues;
+      }
+
+      const targetType =
+        currentValues.paymentMethod === "TRANSFER" ? "BANK" : "CASH";
+
+      const matchedAccount = activeCashBankAccounts.find(
+        (account) => account.type === targetType
+      );
+
+      const isCurrentAccountStillValid = activeCashBankAccounts.some(
+        (account) =>
+          account.id === currentValues.cashBankAccountId &&
+          account.type === targetType
+      );
+
+      if (!isCurrentAccountStillValid) {
+        nextValues.cashBankAccountId = matchedAccount?.id || "";
+      }
+
+      return nextValues;
+    }
+
+    if (name === "paymentMethod") {
+      const nextPaidAmount = Number(currentValues.paidAmount || 0);
+
+      if (nextPaidAmount <= 0) {
+        nextValues.cashBankAccountId = "";
+        return nextValues;
+      }
+
+      const targetType = value === "TRANSFER" ? "BANK" : "CASH";
+
+      const matchedAccount = activeCashBankAccounts.find(
+        (account) => account.type === targetType
+      );
+
+      nextValues.cashBankAccountId = matchedAccount?.id || "";
+      return nextValues;
+    }
+
+    return nextValues;
+  });
+};
 
   const handleAddItem = () => {
     setItems((currentItems) => [...currentItems, createEmptyItem()]);
@@ -187,32 +262,42 @@ function PurchaseCreatePage() {
   };
 
   const handleItemChange = (rowId, field, value) => {
-    setItems((currentItems) =>
-      currentItems.map((item) => {
-        if (item.rowId !== rowId) {
-          return item;
-        }
+  setItems((currentItems) =>
+    currentItems.map((item) => {
+      if (item.rowId !== rowId) {
+        return item;
+      }
 
-        if (field === "productId") {
-          const selectedProduct = products.find((product) => product.id === value);
+      if (field === "categoryId") {
+        return {
+          ...item,
+          categoryId: value,
+          productId: "",
+          purchasePrice: "",
+        };
+      }
 
-          return {
-            ...item,
-            productId: value,
-            purchasePrice:
-              selectedProduct?.purchasePrice !== undefined
-                ? String(selectedProduct.purchasePrice)
-                : item.purchasePrice,
-          };
-        }
+      if (field === "productId") {
+        const selectedProduct = products.find((product) => product.id === value);
 
         return {
           ...item,
-          [field]: value,
+          productId: value,
+          categoryId: selectedProduct?.categoryId || item.categoryId || "",
+          purchasePrice:
+            selectedProduct?.purchasePrice !== undefined
+              ? String(selectedProduct.purchasePrice)
+              : "",
         };
-      })
-    );
-  };
+      }
+
+      return {
+        ...item,
+        [field]: value,
+      };
+    })
+  );
+};
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -279,6 +364,10 @@ function PurchaseCreatePage() {
       setFormError("Akun kas/bank wajib dipilih jika ada pembayaran awal.");
       return;
     }
+    if (remainingAmount > 0 && !formValues.dueDate) {
+      setFormError("Tanggal jatuh tempo wajib diisi jika pembelian belum lunas.");
+      return;
+    }
 
     setIsSubmitting(true);
     setFormError("");
@@ -289,6 +378,7 @@ function PurchaseCreatePage() {
         supplierInvoiceNumber: supplierInvoiceNumber || undefined,
         paidAmount,
         paymentMethod: formValues.paymentMethod,
+        dueDate: remainingAmount > 0 ? formValues.dueDate : undefined,
         cashBankAccountId:
           paidAmount > 0 ? formValues.cashBankAccountId : undefined,
         note: note || undefined,
@@ -402,6 +492,21 @@ function PurchaseCreatePage() {
                     (product) => product.id === item.productId
                   );
 
+                  const selectedProductIdsInOtherRows = items
+                    .filter((otherItem) => otherItem.rowId !== item.rowId)
+                    .map((otherItem) => otherItem.productId)
+                    .filter(Boolean);
+
+                  const availableProducts = products.filter((product) => {
+                    const matchesCategory = item.categoryId
+                      ? product.categoryId === item.categoryId
+                      : true;
+
+                    const isUsedInOtherRow = selectedProductIdsInOtherRows.includes(product.id);
+
+                    return matchesCategory && !isUsedInOtherRow;
+                  });
+
                   const subtotal =
                     Number(item.quantity || 0) * Number(item.purchasePrice || 0);
 
@@ -421,31 +526,55 @@ function PurchaseCreatePage() {
                       </div>
 
                       <div className="purchase-item-grid">
-                        <FormField label="Barang" required className="form-grid-full">
+                        <FormField label="Kategori" className="form-grid-full">
                           <Select
-                            value={item.productId}
+                            value={item.categoryId}
                             onChange={(event) =>
-                              handleItemChange(
-                                item.rowId,
-                                "productId",
-                                event.target.value
-                              )
+                              handleItemChange(item.rowId, "categoryId", event.target.value)
                             }
                             disabled={isLoadingProducts}
                           >
                             <option value="">
-                              {isLoadingProducts ? "Memuat barang..." : "Pilih Barang"}
+                              {isLoadingProducts ? "Memuat kategori..." : "Semua Kategori"}
                             </option>
 
-                            {products.map((product) => (
-                              <option key={product.id} value={product.id}>
-                                {product.supplierCode} - {product.name} | Stok:{" "}
-                                {product.stock} | Harga:{" "}
-                                {formatCurrency(product.purchasePrice)}
+                            {productCategories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
                               </option>
                             ))}
                           </Select>
                         </FormField>
+
+                       <FormField label="Barang" required className="form-grid-full">
+                        <Select
+                          value={item.productId}
+                          onChange={(event) =>
+                            handleItemChange(
+                              item.rowId,
+                              "productId",
+                              event.target.value
+                            )
+                          }
+                          disabled={isLoadingProducts}
+                        >
+                          <option value="">
+                            {isLoadingProducts
+                              ? "Memuat barang..."
+                              : item.categoryId
+                              ? "Pilih Barang"
+                              : "Pilih Barang"}
+                          </option>
+
+                          {availableProducts.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.supplierCode} - {product.name} | Stok:{" "}
+                              {product.stock} | Harga:{" "}
+                              {formatCurrency(product.purchasePrice)}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormField>
 
                         <FormField label="Satuan">
                           <Input value={selectedProduct?.unit || ""} disabled />
@@ -494,71 +623,89 @@ function PurchaseCreatePage() {
                 })}
               </div>
             </Card>
-
-            <Card className="purchase-form-card purchase-payment-card">
-              <div className="purchase-section-header">
-                <div>
-                  <h2>Pembayaran Awal</h2>
-                  <p>Isi nominal dibayar jika pembelian langsung dibayar sebagian atau lunas.</p>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                    <FormField label="Nominal Dibayar" helper="Isi 0 jika belum dibayar.">
-                        <CurrencyInput
-                        name="paidAmount"
-                        value={formValues.paidAmount}
-                        onChange={handleFormChange}
-                        placeholder="0"
-                        />
-                    </FormField>
-
-                    {paidAmount > 0 ? (
-                        <>
-                        <FormField label="Metode Pembayaran" required>
-                            <Select
-                            name="paymentMethod"
-                            value={formValues.paymentMethod}
-                            onChange={handleFormChange}
-                            >
-                            <option value="CASH">Tunai</option>
-                            <option value="TRANSFER">Transfer</option>
-                            </Select>
-                        </FormField>
-
-                        <FormField label="Akun Kas/Bank" required className="form-grid-full">
-                            <Select
-                            name="cashBankAccountId"
-                            value={formValues.cashBankAccountId}
-                            onChange={handleFormChange}
-                            disabled={isLoadingCashBankAccounts}
-                            >
-                            <option value="">
-                                {isLoadingCashBankAccounts
-                                ? "Memuat akun kas/bank..."
-                                : "Pilih akun kas/bank"}
-                            </option>
-
-                            {activeCashBankAccounts.map((account) => (
-                                <option key={account.id} value={account.id}>
-                                {account.name}
-                                {account.type ? ` - ${account.type}` : ""}
-                                {account.bankName ? ` - ${account.bankName}` : ""}
-                                </option>
-                            ))}
-                            </Select>
-                        </FormField>
-                        </>
-                        ) : (
-                            <div className="purchase-payment-empty-note">
-                                 Belum ada pembayaran awal. Transaksi akan tercatat sebagai hutang pembelian.
-                            </div>
-                        )}
-                    </div>
-            </Card>
           </div>
 
           <aside className="purchase-create-sidebar">
+            <Card className="purchase-summary-card purchase-payment-side-card">
+              <div className="purchase-section-header">
+                <div>
+                  <h2>Pembayaran</h2>
+                  <p>Atur pembayaran awal dan info hutang pembelian.</p>
+                </div>
+              </div>
+
+              <div className="form-grid" style={{ gridTemplateColumns: "1fr" }}>
+                <FormField label="Nominal Dibayar" helper="Isi 0 jika belum dibayar.">
+                  <CurrencyInput
+                    name="paidAmount"
+                    value={formValues.paidAmount}
+                    onChange={handleFormChange}
+                    placeholder="0"
+                  />
+                </FormField>
+
+                {paidAmount > 0 ? (
+                  <>
+                    <FormField label="Metode Pembayaran" required>
+                      <Select
+                        name="paymentMethod"
+                        value={formValues.paymentMethod}
+                        onChange={handleFormChange}
+                      >
+                        <option value="CASH">Tunai</option>
+                        <option value="TRANSFER">Transfer</option>
+                      </Select>
+                    </FormField>
+
+                    <FormField
+                      label={formValues.paymentMethod === "TRANSFER" ? "Akun Bank" : "Akun Kas"}
+                      required
+                    >
+                      <Select
+                        name="cashBankAccountId"
+                        value={formValues.cashBankAccountId}
+                        onChange={handleFormChange}
+                        disabled={isLoadingCashBankAccounts}
+                      >
+                        <option value="">
+                          {isLoadingCashBankAccounts
+                            ? "Memuat akun..."
+                            : formValues.paymentMethod === "TRANSFER"
+                            ? "Pilih akun bank"
+                            : "Pilih akun kas"}
+                        </option>
+
+                        {filteredPaymentAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.name}
+                            {account.bankName ? ` - ${account.bankName}` : ""}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                  </>
+                ) : (
+                  <div className="purchase-payment-empty-note">
+                    Belum ada pembayaran awal. Transaksi akan tercatat sebagai hutang pembelian.
+                  </div>
+                )}
+
+                {remainingAmount > 0 ? (
+                  <FormField
+                    label="Tanggal Jatuh Tempo Hutang"
+                    required
+                    helper="Wajib diisi jika pembelian belum lunas."
+                  >
+                    <Input
+                      type="date"
+                      name="dueDate"
+                      value={formValues.dueDate}
+                      onChange={handleFormChange}
+                    />
+                  </FormField>
+                ) : null}
+              </div>
+            </Card>
             <Card className="purchase-summary-card">
               <div className="purchase-section-header">
                 <div>
@@ -589,6 +736,13 @@ function PurchaseCreatePage() {
                   <span>Status Bayar</span>
                   <strong>{paymentStatus.label}</strong>
                 </div>
+
+                {remainingAmount > 0 ? (
+                  <div>
+                    <span>Jatuh Tempo</span>
+                    <strong>{formValues.dueDate || "-"}</strong>
+                  </div>
+                ) : null}
               </div>
               <div className="purchase-summary-actions">
                 <Button

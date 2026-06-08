@@ -3176,13 +3176,11 @@ textarea {
 .purchase-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 18px;
+  gap: 16px;
   align-items: start;
 }
 
 .purchase-detail-main {
-  display: grid;
-  gap: 16px;
   min-width: 0;
 }
 
@@ -3380,9 +3378,16 @@ textarea {
 
 .purchase-detail-sidebar {
   position: sticky;
-  top: 0;
-  min-width: 0;
+  top: 88px;
+  align-self: start;
+  width: 340px;
+  min-width: 340px;
 }
+
+.purchase-detail-sidebar .purchase-summary-card {
+  width: 100%;
+}
+
 
 .purchase-paid-note {
   margin-top: 14px;
@@ -3411,6 +3416,8 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+
 
 /* ==================================================
    PURCHASE / SALES REPORT

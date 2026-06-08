@@ -172,7 +172,7 @@ function PurchaseDetailPage() {
       },
       {
         key: "createdAt",
-        label: "Tanggal Pembayaran",
+        label: "Tanggal",
         width: "190px",
         align: "center",
         render: (row) => formatDateTime(row.createdAt),
@@ -320,9 +320,16 @@ function PurchaseDetailPage() {
               <div className="purchase-info-grid">
                 <InfoItem
                   icon={CalendarDays}
-                  label="Tanggal Pembelian / Tanggal Utang Usaha"
+                  label="Tanggal Pembelian"
                   value={formatDateTime(purchase.createdAt)}
-                  helper="Tanggal transaksi dibuat. Tanggal pembayaran dicatat terpisah di timeline."
+                  helper="Tanggal transaksi pembelian dibuat."
+                />
+
+                <InfoItem
+                  icon={CalendarDays}
+                  label="Jatuh Tempo Hutang"
+                  value={purchase.dueDate ? formatDateTime(purchase.dueDate) : "-"}
+                  helper="Batas waktu pelunasan hutang supplier."
                 />
 
                 <InfoItem
@@ -435,6 +442,10 @@ function PurchaseDetailPage() {
                 <div>
                   <span>Status Bayar</span>
                   <strong>{status.label}</strong>
+                </div>
+                <div>
+                  <span>Jatuh Tempo</span>
+                  <strong>{purchase.dueDate ? formatDateTime(purchase.dueDate) : "-"}</strong>
                 </div>
               </div>
 
@@ -689,6 +700,20 @@ function buildPaymentTimeline(purchase) {
       note: purchase.note || "-",
     });
   }
+
+  if (Number(purchase.remainingAmount || 0) > 0 && purchase.dueDate) {
+  timeline.push({
+    id: "due-date",
+    title: "Jatuh Tempo Hutang",
+    description: "Batas waktu pelunasan hutang supplier",
+    createdAt: purchase.dueDate,
+    amount: purchase.remainingAmount,
+    paymentMethod: null,
+    cashBankAccount: null,
+    createdBy: null,
+    note: "Tanggal jatuh tempo hutang pembelian",
+  });
+}
 
   payments.forEach((payment) => {
     timeline.push({

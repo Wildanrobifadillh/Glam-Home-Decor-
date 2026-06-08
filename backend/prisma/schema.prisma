@@ -299,6 +299,7 @@ model Purchase {
   remainingAmount       Int            @default(0) @map("remaining_amount")
   paymentStatus         PaymentStatus  @default(PAID) @map("payment_status")
   paymentMethod         PaymentMethod  @default(CASH) @map("payment_method")
+  dueDate DateTime? @map("due_date")
   cashBankAccountId     String?        @map("cash_bank_account_id") @db.Uuid
   status                PurchaseStatus @default(COMPLETED)
   note                  String?

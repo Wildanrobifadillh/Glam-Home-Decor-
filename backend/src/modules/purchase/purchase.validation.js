@@ -41,10 +41,21 @@ const createPurchaseSchema = z
 
     paymentMethod: z.enum(["CASH", "TRANSFER"]).optional().default("CASH"),
 
-    cashBankAccountId: z
-      .string()
-      .uuid("Invalid cash/bank account ID")
-      .optional(),
+      dueDate: z.preprocess(
+        (value) => {
+          if (value === "" || value === null || value === undefined) {
+            return undefined;
+          }
+
+          return value;
+        },
+        z.coerce.date().optional()
+      ),
+
+      cashBankAccountId: z
+        .string()
+        .uuid("Invalid cash/bank account ID")
+        .optional(),
 
     note: z.string().trim().optional(),
 
@@ -72,10 +83,30 @@ const createPurchaseSchema = z
       return true;
     },
     {
-      field: "cashBankAccountId",
+      path: ["cashBankAccountId"],
       message: "Cash/bank account is required when paid amount is greater than 0",
     }
+  )
+
+  .refine(
+    (data) => {
+      const totalAmount = data.items.reduce(
+        (total, item) => total + item.quantity * item.purchasePrice,
+        0
+      );
+
+      if (data.paidAmount < totalAmount) {
+        return Boolean(data.dueDate);
+      }
+
+      return true;
+    },
+    {
+      path: ["dueDate"],
+      message: "Due date is required when purchase is not fully paid",
+    }
   );
+
 
 const payPurchaseSchema = z.object({
   amount: z.coerce

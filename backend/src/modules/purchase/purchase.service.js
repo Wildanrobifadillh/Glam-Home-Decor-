@@ -255,6 +255,7 @@ const createPurchase = async ({
   supplierInvoiceNumber,
   paidAmount,
   paymentMethod,
+  dueDate,
   cashBankAccountId,
   note,
   items,
@@ -334,8 +335,16 @@ const createPurchase = async ({
     }
 
     const remainingAmount = totalAmount - paidAmount;
-    const paymentStatus = getPaymentStatus(totalAmount, paidAmount);
-    const purchaseNumber = generatePurchaseNumber();
+      const paymentStatus = getPaymentStatus(totalAmount, paidAmount);
+
+      if (remainingAmount > 0 && !dueDate) {
+        const error = new Error("Due date is required when purchase is not fully paid");
+        error.status = 400;
+        throw error;
+      }
+
+      const normalizedDueDate = remainingAmount > 0 ? dueDate : null;
+      const purchaseNumber = generatePurchaseNumber();
 
     const purchase = await tx.purchase.create({
       data: {
@@ -347,6 +356,7 @@ const createPurchase = async ({
         remainingAmount,
         paymentStatus,
         paymentMethod,
+        dueDate: normalizedDueDate,
         cashBankAccountId,
         status: "COMPLETED",
         note,
