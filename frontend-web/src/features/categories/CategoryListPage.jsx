@@ -16,16 +16,12 @@ import Table from "../../components/ui/Table";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { categoryApi } from "./category.api";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 function CategoryListPage() {
   const [categories, setCategories] = useState([]);
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
 
   const [searchInput, setSearchInput] = useState("");
 
@@ -35,8 +31,22 @@ function CategoryListPage() {
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+    const {
+    currentPage,
+    totalPages,
+    paginatedData: paginatedCategories,
+    startItem,
+    endItem,
+    totalItems,
+    setCurrentPage,
+  } = usePagination(categories, {
+    pageSize: DEFAULT_PAGE_SIZE,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      status: filters.status,
+    }),
+  });
   const [errorMessage, setErrorMessage] = useState("");
 
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -57,8 +67,6 @@ function CategoryListPage() {
 
     try {
       const response = await categoryApi.getList({
-        page,
-        limit: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
         status: filters.status || undefined,
       });
@@ -72,25 +80,14 @@ function CategoryListPage() {
         responseData ||
         [];
 
-      const pagination = responseData?.pagination || responseData?.meta || {};
-
       setCategories(Array.isArray(list) ? list : []);
-      setMeta({
-        page: pagination.page || page,
-        totalPages: pagination.totalPages || pagination.totalPage || 1,
-        totalItems:
-          pagination.totalItems ||
-          pagination.total ||
-          pagination.count ||
-          (Array.isArray(list) ? list.length : 0),
-      });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setCategories([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.status]);
+  }, [debouncedSearch, filters.status]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -103,12 +100,12 @@ function CategoryListPage() {
   }, [fetchCategories]);
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput(value);
   };
 
   const handleStatusChange = (event) => {
-    setPage(1);
+    setCurrentPage(1);
     setFilters((currentFilters) => ({
       ...currentFilters,
       status: event.target.value,
@@ -116,7 +113,7 @@ function CategoryListPage() {
   };
 
   const handleResetFilter = () => {
-    setPage(1);
+    setCurrentPage(1);
     setSearchInput("");
     setFilters({
       status: "",
@@ -333,17 +330,20 @@ function CategoryListPage() {
 
         <Table
           columns={columns}
-          data={categories}
+          data={paginatedCategories}
           isLoading={isLoading}
           emptyTitle="Kategori belum tersedia"
           emptyDescription="Belum ada kategori yang cocok dengan filter saat ini."
         />
 
         <Pagination
-          page={meta.page}
-          totalPages={meta.totalPages}
-          totalItems={meta.totalItems}
-          onPageChange={setPage}
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
         />
       </ListPageLayout>
 
