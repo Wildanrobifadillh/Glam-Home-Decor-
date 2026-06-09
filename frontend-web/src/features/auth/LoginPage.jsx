@@ -5,8 +5,8 @@ import { authApi } from "./auth.api";
 import { authStore } from "./auth.store";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 
-import loginPageBackground from "../../assets/images/login-background-2.png";
-import loginCardBackground from "../../assets/images/login-background-7.png";
+import loginPageBackground from "../../assets/images/login-background-2.webp";
+import loginCardBackground from "../../assets/images/login-background-7.webp";
 import logoGlamHd from "../../assets/images/logo-glam-hd.png";
 
 function LoginPage() {

@@ -20,7 +20,7 @@ import {
   getSidebarGroupsByModuleKeys,
 } from "../../constants/sidebarMenu";
 
-import dashboardHero from "../../assets/images/login-background.png";
+
 import Button from "../../components/ui/Button";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { authStore } from "../auth/auth.store";
@@ -498,8 +498,6 @@ function NonOwnerDashboard({ user }) {
           </span>
           <em>“Fokus pada pekerjaan hari ini dan jaga data tetap rapi.”</em>
         </div>
-
-        <img src={dashboardHero} alt="Interior Glam Home Decor" />
       </section>
 
       <section className="dashboard-body-grid-v3">
