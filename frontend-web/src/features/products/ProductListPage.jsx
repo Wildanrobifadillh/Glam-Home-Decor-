@@ -15,12 +15,13 @@ import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
 import { categoryApi } from "../categories/category.api";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { productApi } from "./product.api";
 import CurrencyInput from "../../components/form/CurrencyInput";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 const emptyFormValues = {
   supplierCode: "",
@@ -36,11 +37,6 @@ const emptyFormValues = {
 function ProductListPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-  });
 
   const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
@@ -49,8 +45,22 @@ function ProductListPage() {
   });
 
   const debouncedSearch = useDebouncedValue(searchInput, 350);
-
-  const [page, setPage] = useState(1);
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    paginatedData: paginatedProducts,
+    startItem,
+    endItem,
+    setCurrentPage,
+  } = usePagination(products, {
+    pageSize: DEFAULT_PAGE_SIZE,
+    resetKey: JSON.stringify({
+      search: debouncedSearch,
+      status: filters.status,
+      categoryId: filters.categoryId,
+    }),
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -71,8 +81,6 @@ function ProductListPage() {
 
     try {
       const response = await productApi.getList({
-        page,
-        limit: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
         status: filters.status || undefined,
         categoryId: filters.categoryId || undefined,
@@ -87,25 +95,15 @@ function ProductListPage() {
         responseData ||
         [];
 
-      const pagination = responseData?.pagination || responseData?.meta || {};
-
       setProducts(Array.isArray(list) ? list : []);
-      setMeta({
-        page: pagination.page || page,
-        totalPages: pagination.totalPages || pagination.totalPage || 1,
-        totalItems:
-          pagination.totalItems ||
-          pagination.total ||
-          pagination.count ||
-          (Array.isArray(list) ? list.length : 0),
-      });
+
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filters.status, filters.categoryId]);
+  }, [debouncedSearch, filters.status, filters.categoryId]);
 
   const fetchCategories = useCallback(async () => {
     setIsLoadingCategories(true);
@@ -154,12 +152,12 @@ function ProductListPage() {
     }, [fetchCategories]);
 
   const handleSearchChange = (value) => {
-    setPage(1);
+    setCurrentPage(1)
     setSearchInput(value);
   };
 
   const handleStatusChange = (event) => {
-    setPage(1);
+    setCurrentPage(1)
     setFilters((currentFilters) => ({
       ...currentFilters,
       status: event.target.value,
@@ -167,7 +165,7 @@ function ProductListPage() {
   };
 
   const handleCategoryFilterChange = (event) => {
-    setPage(1);
+    setCurrentPage(1)
     setFilters((currentFilters) => ({
       ...currentFilters,
       categoryId: event.target.value,
@@ -175,7 +173,7 @@ function ProductListPage() {
   };
 
   const handleResetFilter = () => {
-    setPage(1);
+    setCurrentPage(1)
     setSearchInput("");
     setFilters({
       status: "",
@@ -497,17 +495,20 @@ function ProductListPage() {
         <Table
           className="product-table"
           columns={columns}
-          data={products}
+          data={paginatedProducts}
           isLoading={isLoading}
           emptyTitle="Barang belum tersedia"
           emptyDescription="Belum ada barang yang cocok dengan filter saat ini."
         />
 
         <Pagination
-          page={meta.page}
-          totalPages={meta.totalPages}
-          totalItems={meta.totalItems}
-          onPageChange={setPage}
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startItem={startItem}
+          endItem={endItem}
+          pageSize={DEFAULT_PAGE_SIZE}
+          onPageChange={setCurrentPage}
         />
       </ListPageLayout>
 
