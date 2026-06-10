@@ -8,8 +8,26 @@ const routes = require("./routes");
 
 const app = express();
 
+const allowedOrigins =
+  process.env.NODE_ENV === "production"
+    ? [process.env.CORS_ORIGIN]
+    : [process.env.CORS_ORIGIN, "http://localhost:5173"];
+
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,8 +64,7 @@ app.use((err, req, res, next) => {
 
   return res.status(statusCode).json({
     success: false,
-    message:
-      statusCode >= 500 ? "Internal server error" : err.message,
+    message: statusCode >= 500 ? "Internal server error" : err.message,
   });
 });
 
