@@ -10,3 +10,5 @@ coverage/
 tmp/
 temp/
 .DS_Store
+
+scripts/recovery/restore-accounts-from-backup.js
