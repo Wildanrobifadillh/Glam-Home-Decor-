@@ -15,6 +15,11 @@ const {
 
 const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 
+const PDF_PAPER_SIZE = "CONTINUOUS_95X11";
+
+const getContinuousMaxItems = (documentSetting) =>
+  documentSetting?.maxItemsA4 || 8;
+
 const getPaymentStatus = (totalAmount, paidAmount) => {
   if (paidAmount === 0) {
     return "UNPAID";
@@ -1045,9 +1050,8 @@ const getSaleInvoicePreview = async (saleId) => {
     sale.taxAmount +
     additionalCostAmount;
 
-  const paperSize = documentSetting.defaultPaperSize;
-    const maxItems =
-      paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
+  const paperSize = PDF_PAPER_SIZE;
+    const maxItems = getContinuousMaxItems(documentSetting);
 
     const copyLabels = [
       {
@@ -1071,7 +1075,7 @@ const getSaleInvoicePreview = async (saleId) => {
       maxItems,
       invoiceCopies: 1,
       copyLabels,
-      layout: "landscape",
+      layout: "portrait",
       isOfficialInvoice: Boolean(sale.invoiceNumber),
     },
     store: {
