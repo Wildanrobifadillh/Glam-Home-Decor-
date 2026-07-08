@@ -78,31 +78,17 @@ const drawInvoiceReceiverSection = (doc, x, y, width) => {
 
   drawLine(doc, x + 42, lineY, x + width - 42, lineY);
 
-  doc.font("Helvetica").fontSize(8);
-  drawText(doc, "Nama Jelas & Tanda Tangan", x, lineY + 8, {
-    width,
-    align: "center",
-  });
-
-  return lineY + 20;
+  return lineY + 8;
 };
 
-const drawInvoiceSenderSection = (
-  doc,
-  x,
-  y,
-  width,
-  storeName,
-  responsiblePersonName,
-  responsiblePersonTitle
-) => {
+const drawInvoiceSenderSection = (doc, x, y, width) => {
   doc.font("Helvetica").fontSize(8);
   drawText(doc, "Hormat kami,", x, y, {
     width,
     align: "center",
   });
 
-  drawText(doc, storeName || "Glam Home Decor", x, y + 14, {
+  drawText(doc, "GHD Home Decor", x, y + 14, {
     width,
     align: "center",
   });
@@ -111,19 +97,7 @@ const drawInvoiceSenderSection = (
 
   drawLine(doc, x + 42, lineY, x + width - 42, lineY);
 
-  doc.font("Helvetica-Bold").fontSize(8);
-  drawText(doc, responsiblePersonName || "-", x, lineY + 8, {
-    width,
-    align: "center",
-  });
-
-  doc.font("Helvetica").fontSize(7);
-  drawText(doc, responsiblePersonTitle || "Penanggung Jawab", x, lineY + 20, {
-    width,
-    align: "center",
-  });
-
-  return lineY + 30;
+  return lineY + 8;
 };
 
 const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
@@ -145,16 +119,14 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   let y = margin;
 
   doc.font("Helvetica-Bold").fontSize(14);
-  drawText(doc, store.name, margin, y, { width: 340 });
+  drawText(doc, "GHD Home Decor", margin, y, { width: 340 });
 
   doc.font("Helvetica").fontSize(7);
   drawText(doc, store.address, margin, y + 16, { width: 300 });
   drawText(doc, `Telp: ${store.phone || "-"}`, margin, y + 30, { width: 220 });
   drawText(doc, `Email: ${store.email || "-"}`, margin, y + 42, { width: 260 });
 
-  if (store.socialMedia) {
-    drawText(doc, store.socialMedia, margin, y + 54, { width: 260 });
-  }
+  drawText(doc, "Instagram @ghdhome_decor", margin, y + 54, { width: 260 });
 
   doc.font("Helvetica-Bold").fontSize(16);
   drawText(doc, "INVOICE", pageWidth - margin - 180, y, {
@@ -473,10 +445,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     doc,
     rightXFooter,
     footerY,
-    blockWidth,
-    store.name,
-    authorization.responsiblePersonName,
-    authorization.responsiblePersonTitle
+    blockWidth
   );
 };
 
@@ -500,11 +469,21 @@ const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
+      const printScale = 0.88;
+      const printOffsetX = 0;
+      const printOffsetY = 0;
+
+      doc.save();
+      doc.translate(printOffsetX, printOffsetY);
+      doc.scale(printScale);
+
       drawInvoiceCopy({
         doc,
         invoicePreview,
         copyLabel: invoicePreview.invoice.copyLabels[0] || null,
       });
+
+      doc.restore();
 
       doc.end();
     } catch (error) {
