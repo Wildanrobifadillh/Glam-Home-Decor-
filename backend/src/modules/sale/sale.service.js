@@ -1218,9 +1218,8 @@ const getSaleDeliveryOrderPreview = async (saleId) => {
   const storeProfile = await settingsService.getStoreProfile();
   const documentSetting = await settingsService.getDocumentSetting();
 
-  const paperSize = documentSetting.defaultPaperSize;
-  const maxItems =
-    paperSize === "F4" ? documentSetting.maxItemsF4 : documentSetting.maxItemsA4;
+  const paperSize = PDF_PAPER_SIZE;
+  const maxItems = getContinuousMaxItems(documentSetting);
 
   const totalQuantity = sale.items.reduce((total, item) => {
     return total + item.quantity;

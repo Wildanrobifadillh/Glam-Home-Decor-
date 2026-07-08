@@ -82,12 +82,13 @@ const drawInvoiceReceiverSection = (doc, x, y, width) => {
 };
 
 const drawInvoiceSenderSection = (doc, x, y, width) => {
-  doc.font("Helvetica").fontSize(8);
+  doc.font("Helvetica-Bold").fontSize(8);
   drawText(doc, "Hormat kami,", x, y, {
     width,
     align: "center",
   });
 
+  doc.font("Helvetica-Bold").fontSize(8);
   drawText(doc, "GHD Home Decor", x, y + 14, {
     width,
     align: "center",

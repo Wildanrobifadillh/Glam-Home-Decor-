@@ -3,7 +3,11 @@ const PDFDocument = require("pdfkit");
 const PAPER_SIZES = {
   A4: [595.28, 841.89],
   F4: [612, 936],
+  CONTINUOUS_95X11: [684, 792],
 };
+
+const STORE_DISPLAY_NAME = "GHD Home Decor";
+const STORE_INSTAGRAM = "Instagram @ghdhome_decor";
 
 const formatDate = (value) => {
   if (!value) {
@@ -75,14 +79,7 @@ const drawCell = (
   });
 };
 
-const getSafeStoreName = (store) => {
-  return (
-    store?.name ||
-    store?.legalName ||
-    store?.brandShortName ||
-    "Glam Home Decor"
-  );
-};
+const getSafeStoreName = () => STORE_DISPLAY_NAME;
 
 const buildStoreMetaLines = (store) => {
   const lines = [];
@@ -104,11 +101,7 @@ const buildStoreMetaLines = (store) => {
     }
   }
 
-  if (store?.socialMedia) {
-    lines.push(`Instagram ${store.socialMedia}`);
-  } else if (store?.website) {
-    lines.push(store.website);
-  }
+  lines.push(STORE_INSTAGRAM);
 
   return lines;
 };
@@ -514,15 +507,13 @@ const drawSignatureSection = (
   margin,
   startY
 ) => {
-  const authorization = preview.authorization || {};
-  const store = preview.store || {};
   const contentWidth = pageWidth - margin * 2;
   const blockWidth = 260;
   const gap = contentWidth - blockWidth * 2;
 
   let y = startY;
 
-  if (y + 150 > pageHeight - margin) {
+  if (y + 120 > pageHeight - margin) {
     doc.addPage();
     y = margin;
   }
@@ -541,31 +532,14 @@ const drawSignatureSection = (
 
   drawLine(doc, leftX + 55, receiverLineY, leftX + blockWidth - 55, receiverLineY);
 
-  doc.font("Helvetica").fontSize(9);
-  drawText(doc, "(__________________________)", leftX, receiverLineY + 8, {
-    width: blockWidth,
-    align: "center",
-  });
-
-  drawText(doc, "Nama Jelas & Tanda Tangan", leftX, receiverLineY + 26, {
-    width: blockWidth,
-    align: "center",
-  });
-
-  // KANAN = HORMAT KAMI / PENANGGUNG JAWAB
-  doc.font("Helvetica").fontSize(10);
+  // KANAN = HORMAT KAMI
+  doc.font("Helvetica-Bold").fontSize(10);
   drawText(doc, "Hormat kami,", rightX, y, {
     width: blockWidth,
     align: "center",
   });
 
-  const storeName =
-    store?.name ||
-    store?.legalName ||
-    store?.brandShortName ||
-    "Glam Home Decor";
-
-  drawText(doc, storeName, rightX, y + 18, {
+  drawText(doc, STORE_DISPLAY_NAME, rightX, y + 18, {
     width: blockWidth,
     align: "center",
   });
@@ -574,37 +548,14 @@ const drawSignatureSection = (
 
   drawLine(doc, rightX + 55, senderLineY, rightX + blockWidth - 55, senderLineY);
 
-  doc.font("Helvetica-Bold").fontSize(9);
-  drawText(
-    doc,
-    authorization.responsiblePersonName || "-",
-    rightX,
-    senderLineY + 8,
-    {
-      width: blockWidth,
-      align: "center",
-    }
-  );
-
-  doc.font("Helvetica").fontSize(9);
-  drawText(
-    doc,
-    authorization.responsiblePersonTitle || "Penanggung Jawab",
-    rightX,
-    senderLineY + 26,
-    {
-      width: blockWidth,
-      align: "center",
-    }
-  );
-
-  return senderLineY + 42;
+  return senderLineY + 8;
 };
 
 const drawDeliveryOrder = (doc, preview) => {
-  const paperSize = preview.deliveryOrder?.paperSize || "F4";
-  const [pageWidth, pageHeight] = PAPER_SIZES[paperSize] || PAPER_SIZES.F4;
-  const margin = 30;
+  const paperSize = preview.deliveryOrder?.paperSize || "CONTINUOUS_95X11";
+  const [pageWidth, pageHeight] =
+    PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
+  const margin = 24;
 
   let y = margin;
 
@@ -618,14 +569,16 @@ const drawDeliveryOrder = (doc, preview) => {
 const generateSaleDeliveryOrderPdfBuffer = async (deliveryOrderPreview) => {
   return new Promise((resolve, reject) => {
     try {
-      const paperSize = deliveryOrderPreview.deliveryOrder?.paperSize || "F4";
-      const size = PAPER_SIZES[paperSize] || PAPER_SIZES.F4;
+      const paperSize =
+  deliveryOrderPreview.deliveryOrder?.paperSize || "CONTINUOUS_95X11";
+  const size = PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
 
-      const doc = new PDFDocument({
-        size,
-        margin: 36,
-        compress: true,
-      });
+  const doc = new PDFDocument({
+    size,
+    layout: "portrait",
+    margin: 24,
+    compress: true,
+  });
 
       const chunks = [];
 
@@ -641,7 +594,17 @@ const generateSaleDeliveryOrderPdfBuffer = async (deliveryOrderPreview) => {
         reject(error);
       });
 
+      const printScale = 0.88;
+      const printOffsetX = 0;
+      const printOffsetY = 0;
+
+      doc.save();
+      doc.translate(printOffsetX, printOffsetY);
+      doc.scale(printScale);
+
       drawDeliveryOrder(doc, deliveryOrderPreview);
+
+      doc.restore();
       doc.end();
     } catch (error) {
       reject(error);
