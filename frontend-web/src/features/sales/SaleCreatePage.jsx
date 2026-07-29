@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { API_BASE_URL } from "../../constants/api";
+import { BRAND } from "../../constants/brand";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { cashBankApi } from "../cash-bank/cashBank.api";
@@ -601,7 +602,7 @@ const effectiveCashBankAccountId =
         <div className="sale-pos-header">
           <div>
             <span>Penjualan / Kasir</span>
-            <h1>Kasir Plafon PVC</h1>
+            <h1>KASIR {BRAND.name}</h1>
             <p>
               POS cepat untuk penjualan PVC, wallpaper, aksesoris, jasa pasang,
               dan pembayaran piutang.
