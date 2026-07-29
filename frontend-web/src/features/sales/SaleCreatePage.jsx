@@ -15,7 +15,13 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -32,8 +38,9 @@ import { saleApi } from "./sale.api";
 
 const ALL_CATEGORY = "Semua";
 
-function SaleCreatePage() {
+  function SaleCreatePage() {
   const navigate = useNavigate();
+  const customerNameInputRef = useRef(null);
 
   const [now, setNow] = useState(() => new Date());
 
@@ -441,7 +448,20 @@ const effectiveCashBankAccountId =
   };
 
   const validateSaleBeforeSubmit = () => {
-    if (!cartItems.length) {
+  if (!selectedCustomerId && !customerForm.customerName.trim()) {
+    customerNameInputRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    window.setTimeout(() => {
+      customerNameInputRef.current?.focus();
+    }, 300);
+
+    return "Nama customer wajib diisi.";
+  }
+
+  if (!cartItems.length) {
       return "Keranjang masih kosong. Pilih minimal satu produk.";
     }
 
@@ -481,7 +501,7 @@ const effectiveCashBankAccountId =
       customerId: selectedCustomerId || undefined,
       customerName: selectedCustomerId
         ? undefined
-        : customerForm.customerName.trim() || "Walk-in Customer",
+        : customerForm.customerName.trim(),
       customerPhone: selectedCustomerId
         ? undefined
         : customerForm.customerPhone.trim() || undefined,
@@ -697,7 +717,7 @@ const effectiveCashBankAccountId =
                       value={selectedCustomerId}
                       onChange={handleSelectedCustomerChange}
                     >
-                      <option value="">Walk-in / Customer Manual</option>
+                      <option value="">Input Customer Manual</option>
 
                       {customers.map((customer) => (
                         <option key={customer.id} value={customer.id}>
@@ -711,11 +731,13 @@ const effectiveCashBankAccountId =
                   <label>
                     Nama Customer
                     <input
+                      ref={customerNameInputRef}
                       name="customerName"
                       value={customerForm.customerName}
                       onChange={handleCustomerChange}
-                      placeholder="Walk-in / nama customer"
+                      placeholder="Masukkan nama customer"
                       disabled={Boolean(selectedCustomer)}
+                      required={!selectedCustomer}
                     />
                   </label>
 
@@ -1189,9 +1211,7 @@ const effectiveCashBankAccountId =
                     <div className="sale-modal-summary-card">
                       <span>Customer</span>
                       <strong>
-                        {selectedCustomer?.name ||
-                          customerForm.customerName ||
-                          "Walk-in Customer"}
+                        {selectedCustomer?.name || customerForm.customerName}
                       </strong>
                       <p>{customerForm.customerPhone || selectedCustomer?.phone || "-"}</p>
                     </div>

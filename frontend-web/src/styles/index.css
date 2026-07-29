@@ -10187,22 +10187,59 @@ textarea {
 }
 
 /* ==================================================
-   SALES POS INDEPENDENT CART SCROLL
+   SALES POS INDEPENDENT COLUMN SCROLL
 ================================================== */
 
 @media (min-width: 1081px) {
+  .sale-pos-fullscreen {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .sale-pos-page {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sale-pos-shell {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+  .sale-pos-catalog {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+  }
+
   .sale-pos-cart {
-    position: sticky;
-    top: 16px;
-    align-self: start;
-    max-height: calc(100vh - 32px);
+    position: static;
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
     overflow: hidden;
   }
 
   .sale-pos-cart-card {
-    max-height: calc(100vh - 32px);
+    height: 100%;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
+    align-content: start;
+    grid-auto-rows: max-content;
+  }
+
+  .sale-cart-items {
+    min-height: 140px;
   }
 }
