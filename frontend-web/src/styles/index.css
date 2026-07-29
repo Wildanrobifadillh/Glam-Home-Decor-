@@ -10185,3 +10185,24 @@ textarea {
     width: 100%;
   }
 }
+
+/* ==================================================
+   SALES POS INDEPENDENT CART SCROLL
+================================================== */
+
+@media (min-width: 1081px) {
+  .sale-pos-cart {
+    position: sticky;
+    top: 16px;
+    align-self: start;
+    max-height: calc(100vh - 32px);
+    overflow: hidden;
+  }
+
+  .sale-pos-cart-card {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
