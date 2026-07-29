@@ -14,6 +14,7 @@ import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { BRAND } from "../../constants/brand";
 import { categoryApi } from "./category.api";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePagination } from "../../hooks/usePagination";
@@ -292,7 +293,7 @@ function CategoryListPage() {
       <ListPageLayout
         eyebrow=""
         title="Kategori"
-        description="Kelola kategori barang untuk Glam Home Decor."
+        description={`Kelola kategori barang untuk ${BRAND.name}.`}
         actions={
           <Button onClick={handleOpenCreateModal}>
             <Plus size={17} />

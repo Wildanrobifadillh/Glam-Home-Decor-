@@ -15,6 +15,7 @@ import Select from "../../components/ui/Select";
 import Table from "../../components/ui/Table";
 import Textarea from "../../components/ui/Textarea";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { BRAND } from "../../constants/brand";
 import { supplierApi } from "./supplier.api";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
@@ -330,7 +331,7 @@ const debouncedSearch = useDebouncedValue(searchInput, 350);
       <ListPageLayout
         eyebrow=""
         title="Supplier"
-        description="Kelola data supplier untuk pembelian barang Glam Home Decor."
+        description={`Kelola data supplier untuk pembelian barang ${BRAND.name}.`}
         actions={
           <Button onClick={handleOpenCreateModal}>
             <Plus size={17} />
