@@ -23,6 +23,28 @@ import { formatDateTime } from "../../utils/formatDateTime";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import { saleApi } from "./sale.api";
 
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getCurrentMonthDateRange() {
+  const today = new Date();
+  const firstDayOfMonth = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    1
+  );
+
+  return {
+    dateFrom: formatDateInput(firstDayOfMonth),
+    dateTo: formatDateInput(today),
+  };
+}
+
 
 function SaleListPage() {
   const navigate = useNavigate();
@@ -34,12 +56,11 @@ function SaleListPage() {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
-  const [filters, setFilters] = useState({
-    dateFrom: "",
-    dateTo: "",
+  const [filters, setFilters] = useState(() => ({
+    ...getCurrentMonthDateRange(),
     paymentStatus: "",
     saleStatus: "",
-  });
+  }));
 
   const fetchSales = useCallback(async () => {
     setIsLoading(true);
@@ -191,10 +212,15 @@ const summary = useMemo(() => {
   };
 
   const handleDateRangeChange = (value) => {
+    const isDateRangeEmpty = !value.dateFrom && !value.dateTo;
+    const nextDateRange = isDateRangeEmpty
+      ? getCurrentMonthDateRange()
+      : value;
+
     setFilters((currentFilters) => ({
       ...currentFilters,
-      dateFrom: value.dateFrom,
-      dateTo: value.dateTo,
+      dateFrom: nextDateRange.dateFrom,
+      dateTo: nextDateRange.dateTo,
     }));
 
     setCurrentPage(1);
@@ -203,8 +229,7 @@ const summary = useMemo(() => {
   const handleResetFilter = () => {
     setSearchInput("");
     setFilters({
-      dateFrom: "",
-      dateTo: "",
+      ...getCurrentMonthDateRange(),
       paymentStatus: "",
       saleStatus: "",
     });
