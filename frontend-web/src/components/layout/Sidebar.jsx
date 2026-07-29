@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 import logoGlamHd from "../../assets/images/logo-glam-hd.png";
+import { BRAND } from "../../constants/brand";
 import {
   getAllowedModuleKeysByRole,
   getSidebarFooterItemsByModuleKeys,
@@ -95,7 +96,7 @@ function Sidebar({ user }) {
   return (
     <aside className="dashboard-sidebar-v3">
       <div className="sidebar-v3-brand">
-        <img src={logoGlamHd} alt="Glam Home Decor" />
+        <img src={logoGlamHd} alt={BRAND.name} />
       </div>
 
       <div className="sidebar-v3-search">
