@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { authApi } from "./auth.api";
 import { authStore } from "./auth.store";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { BRAND } from "../../constants/brand";
 
 import loginPageBackground from "../../assets/images/login-background-2.webp";
 import loginCardBackground from "../../assets/images/login-background-7.webp";
@@ -90,12 +91,12 @@ const handleSubmit = async (event) => {
           </div>
 
           <div className="lp2-logo-avatar">
-            <img src={logoGlamHd} alt="Glam Home Decor" />
+            <img src={logoGlamHd} alt={BRAND.name} />
           </div>
 
           <div className="lp2-heading">
             <h1>Welcome Back!!</h1>
-            <p>Sistem Informasi Glam Home Decor</p>
+            <p>{BRAND.systemName}</p>
           </div>
 
           <form className="lp2-form" onSubmit={handleSubmit}>
@@ -152,7 +153,7 @@ const handleSubmit = async (event) => {
             </button>
           </form>
 
-          <p className="lp2-footer">© 2026 Glam Home Decor</p>
+          <p className="lp2-footer">{BRAND.copyright}</p>
         </div>
       </section>
     </main>
