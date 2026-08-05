@@ -49,14 +49,13 @@ function ExpenseListPage() {
   const [cashBankAccounts, setCashBankAccounts] = useState([]);
   const [searchInput, setSearchInput] = useState("");
 
-  const [filters, setFilters] = useState({
-    dateFrom: "",
-    dateTo: "",
+  const [filters, setFilters] = useState(() => ({
+    ...getCurrentMonthDateRange(),
     accountId: "",
     cashBankAccountId: "",
     paymentMethod: "",
     status: "",
-  });
+  }));
 
   const [form, setForm] = useState(initialForm);
   const [selectedExpense, setSelectedExpense] = useState(null);
@@ -218,7 +217,9 @@ function ExpenseListPage() {
   }, [fetchData]);
 
   const summary = useMemo(() => {
-    return expenses.reduce(
+    return expenses
+      .filter((expense) => expense.status === "POSTED")
+      .reduce(
       (current, expense) => {
         const amount = Number(expense.amount || 0);
 
@@ -263,8 +264,7 @@ function ExpenseListPage() {
     setSearchInput("");
 
     setFilters({
-      dateFrom: "",
-      dateTo: "",
+      ...getCurrentMonthDateRange(),
       accountId: "",
       cashBankAccountId: "",
       paymentMethod: "",
@@ -1237,6 +1237,27 @@ function parseAmountInput(value) {
   const numberValue = Number(digits || 0);
 
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function formatLocalInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getCurrentMonthDateRange() {
+  const now = new Date();
+
+  return {
+    dateFrom: formatLocalInputDate(
+      new Date(now.getFullYear(), now.getMonth(), 1)
+    ),
+    dateTo: formatLocalInputDate(
+      new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    ),
+  };
 }
 
 function getTodayInputDate() {
