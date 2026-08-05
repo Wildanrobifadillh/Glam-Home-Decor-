@@ -68,6 +68,10 @@ function ExpenseListPage() {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [expenseToCancel, setExpenseToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -398,6 +402,66 @@ function ExpenseListPage() {
     setSelectedExpense(null);
   };
 
+  const handleOpenCancelModal = useCallback((expense, event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    if (expense.status !== "POSTED") {
+      return;
+    }
+
+    setExpenseToCancel(expense);
+    setCancelReason("");
+    setErrorMessage("");
+    setIsCancelModalOpen(true);
+  }, []);
+
+  const handleCloseCancelModal = () => {
+    if (isCancelling) {
+      return;
+    }
+
+    setIsCancelModalOpen(false);
+    setExpenseToCancel(null);
+    setCancelReason("");
+    setErrorMessage("");
+  };
+
+  const handleConfirmCancel = async () => {
+    const reason = cancelReason.trim();
+
+    if (!expenseToCancel?.id) {
+      setErrorMessage("Data expense yang akan dibatalkan tidak ditemukan.");
+      return;
+    }
+
+    if (reason.length < 3) {
+      setErrorMessage("Alasan pembatalan minimal 3 karakter.");
+      return;
+    }
+
+    setIsCancelling(true);
+    setErrorMessage("");
+
+    try {
+      await expenseApi.cancel(expenseToCancel.id, {
+        reason,
+      });
+
+      await fetchData();
+
+      setIsCancelModalOpen(false);
+      setExpenseToCancel(null);
+      setCancelReason("");
+      setIsDetailModalOpen(false);
+      setSelectedExpense(null);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const expensePagination = usePagination(expenses, {
     pageSize: 15,
     resetKey: `${debouncedSearch}|${filters.dateFrom}|${filters.dateTo}|${filters.accountId}|${filters.cashBankAccountId}|${filters.paymentMethod}|${filters.status}`,
@@ -493,22 +557,36 @@ function ExpenseListPage() {
       {
         key: "actions",
         label: "Aksi",
-        width: "130px",
+        width: "230px",
         align: "center",
         render: (row) => (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={(event) => handleOpenDetail(row, event)}
-          >
-            <Eye size={14} />
-            Detail
-          </Button>
+          <div className="cash-bank-table-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={(event) => handleOpenDetail(row, event)}
+            >
+              <Eye size={14} />
+              Detail
+            </Button>
+
+            {row.status === "POSTED" ? (
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={(event) => handleOpenCancelModal(row, event)}
+              >
+                <AlertTriangle size={14} />
+                Batalkan
+              </Button>
+            ) : null}
+          </div>
         ),
       },
     ],
-    [handleOpenDetail]
+    [handleOpenCancelModal, handleOpenDetail]
   );
 
   return (
@@ -859,6 +937,97 @@ function ExpenseListPage() {
                     Selesai
                   </Button>
                 </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+        {isCancelModalOpen
+          ? createPortal(
+            <div className="return-confirm-backdrop">
+              <div className="return-confirm-modal">
+                {isCancelling ? (
+                  <>
+                    <div className="return-confirm-icon is-processing">
+                      <Loader2 className="return-loading-icon" size={38} />
+                    </div>
+
+                    <h2>Membatalkan expense...</h2>
+
+                    <p>
+                      Sistem sedang membuat jurnal pembatalan dan mengembalikan
+                      saldo kas atau bank.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="return-confirm-icon is-warning">
+                      <AlertTriangle size={34} />
+                    </div>
+
+                    <h2>Batalkan expense?</h2>
+
+                    <p>
+                      Pembatalan akan membuat jurnal reversal dan mengembalikan
+                      saldo kas atau bank.
+                    </p>
+
+                    <div className="return-confirm-summary">
+                      <div>
+                        <span>No Expense</span>
+                        <strong>{expenseToCancel?.expenseNumber || "-"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Nominal</span>
+                        <strong>
+                          {formatCurrency(expenseToCancel?.amount || 0)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="ui-field" style={{ width: "100%" }}>
+                      <label htmlFor="cancel-expense-reason">
+                        Alasan pembatalan
+                      </label>
+
+                      <textarea
+                        id="cancel-expense-reason"
+                        className="ui-textarea"
+                        value={cancelReason}
+                        onChange={(event) => setCancelReason(event.target.value)}
+                        placeholder="Contoh: Salah memasukkan nominal expense"
+                        rows={4}
+                        maxLength={500}
+                        autoFocus
+                      />
+                    </div>
+
+                    {errorMessage ? (
+                      <div className="page-error-alert">{errorMessage}</div>
+                    ) : null}
+
+                    <div className="return-confirm-actions">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleCloseCancelModal}
+                        disabled={isCancelling}
+                      >
+                        Tidak
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={handleConfirmCancel}
+                        disabled={isCancelling}
+                      >
+                        Ya, Batalkan
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>,
             document.body

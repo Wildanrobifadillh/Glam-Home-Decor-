@@ -20,4 +20,8 @@ export const expenseApi = {
   create(payload) {
     return apiClient.post("/expenses", payload);
   },
+
+  cancel(id, payload) {
+    return apiClient.post(`/expenses/${id}/cancel`, payload);
+  },
 };
