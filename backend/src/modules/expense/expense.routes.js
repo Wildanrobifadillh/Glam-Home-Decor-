@@ -34,4 +34,11 @@ router.post(
   expenseController.createExpense
 );
 
+router.post(
+  "/:id/cancel",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  expenseController.cancelExpense
+);
+
 module.exports = router;

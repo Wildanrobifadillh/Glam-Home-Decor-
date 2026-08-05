@@ -300,9 +300,108 @@ const createExpense = async ({
   });
 };
 
+const cancelExpense = async ({
+  expenseId,
+  reason,
+  cancelledById,
+}) => {
+  return prisma.$transaction(async (tx) => {
+    const expense = await tx.expense.findUnique({
+      where: {
+        id: expenseId,
+      },
+    });
+
+    if (!expense) {
+      const error = new Error("Expense not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (expense.status !== "POSTED") {
+      const error = new Error("Only posted expense can be cancelled");
+      error.status = 400;
+      throw error;
+    }
+
+    const originalJournalEntry = await tx.journalEntry.findFirst({
+      where: {
+        sourceType: "EXPENSE",
+        sourceId: expense.id,
+      },
+      include: {
+        lines: true,
+        reversedBy: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    if (!originalJournalEntry) {
+      const error = new Error("Expense journal entry not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (originalJournalEntry.status !== "POSTED") {
+      const error = new Error(
+        "Expense journal entry is not in posted status"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (originalJournalEntry.reversedBy) {
+      const error = new Error("Expense has already been cancelled");
+      error.status = 400;
+      throw error;
+    }
+
+    const reversalLines = originalJournalEntry.lines.map((line) => ({
+      accountId: line.accountId,
+      debit: line.credit,
+      credit: line.debit,
+      note: `Cancellation of ${expense.expenseNumber}: ${reason}`,
+    }));
+
+    const cancellationJournal = await createJournalEntryWithLines({
+      tx,
+      description: `Cancellation of expense ${expense.expenseNumber} - ${reason}`,
+      sourceType: "REVERSAL",
+      sourceId: originalJournalEntry.id,
+      reversalOfId: originalJournalEntry.id,
+      lines: reversalLines,
+      createdById: cancelledById,
+    });
+
+    await tx.expense.update({
+      where: {
+        id: expense.id,
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
+
+    const cancelledExpense = await tx.expense.findUnique({
+      where: {
+        id: expense.id,
+      },
+      include: getExpenseInclude(),
+    });
+
+    return {
+      expense: cancelledExpense,
+      cancellationJournal,
+    };
+  });
+};
+
 module.exports = {
   getAllExpenses,
   getExpenseById,
   getExpenseSummary,
   createExpense,
+  cancelExpense,
 };

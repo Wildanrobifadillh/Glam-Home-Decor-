@@ -1,5 +1,8 @@
 const expenseService = require("./expense.service");
-const { createExpenseSchema } = require("./expense.validation");
+const {
+  createExpenseSchema,
+  cancelExpenseSchema,
+} = require("./expense.validation");
 
 const getAllExpenses = async (req, res, next) => {
   try {
@@ -81,9 +84,30 @@ const createExpense = async (req, res, next) => {
   }
 };
 
+const cancelExpense = async (req, res, next) => {
+  try {
+    const validatedData = cancelExpenseSchema.parse(req.body);
+
+    const result = await expenseService.cancelExpense({
+      expenseId: req.params.id,
+      reason: validatedData.reason,
+      cancelledById: req.user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Expense cancelled successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllExpenses,
   getExpenseSummary,
   getExpenseById,
   createExpense,
+  cancelExpense,
 };
