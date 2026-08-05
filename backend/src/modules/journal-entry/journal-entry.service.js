@@ -112,8 +112,10 @@ const reverseJournalEntry = async ({ journalEntryId, note, createdById }) => {
       throw error;
     }
 
-    if (originalJournalEntry.sourceType === "REVERSAL") {
-      const error = new Error("Reversal journal cannot be reversed");
+    if (originalJournalEntry.sourceType !== "MANUAL") {
+      const error = new Error(
+        "Only manual journal entries can be reversed from this endpoint"
+      );
       error.status = 400;
       throw error;
     }
@@ -141,15 +143,6 @@ const reverseJournalEntry = async ({ journalEntryId, note, createdById }) => {
       reversalOfId: originalJournalEntry.id,
       lines: reversalLines,
       createdById,
-    });
-
-    await tx.journalEntry.update({
-      where: {
-        id: journalEntryId,
-      },
-      data: {
-        status: "CANCELLED",
-      },
     });
 
     return tx.journalEntry.findUnique({
