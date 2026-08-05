@@ -339,7 +339,7 @@ function JournalEntryListPage() {
         render: (row) => {
           const canReverse =
             row.status === "POSTED" &&
-            row.sourceType !== "REVERSAL" &&
+            row.sourceType === "MANUAL" &&
             !row.reversedBy;
 
           return (
@@ -616,7 +616,7 @@ function JournalEntryListPage() {
                       </Button>
 
                       {selectedJournalEntry.status === "POSTED" &&
-                      selectedJournalEntry.sourceType !== "REVERSAL" &&
+                      selectedJournalEntry.sourceType === "MANUAL" &&
                       !selectedJournalEntry.reversedBy ? (
                         <Button
                           type="button"
