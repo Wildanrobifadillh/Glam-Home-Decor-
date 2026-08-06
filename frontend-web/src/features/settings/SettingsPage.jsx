@@ -3,7 +3,6 @@ import {
   Building2,
   CheckCircle2,
   CreditCard,
-  FileText,
   KeyRound,
   Loader2,
   Pencil,
@@ -48,21 +47,16 @@ const tabs = [
     label: "Operasional",
     icon: Settings2,
   },
-    {
-    key: "document",
-    label: "Dokumen & PDF",
-    icon: FileText,
-    },
-    {
+  {
     key: "permissions",
     label: "Hak Akses",
     icon: UsersRound,
-    },
-    {
+  },
+  {
     key: "users",
     label: "User & Password",
     icon: UserPlus,
-    },
+  },
 ];
 
 const initialStoreProfile = {
@@ -85,38 +79,6 @@ const initialOperationalPreferences = {
   defaultPaymentMethod: "CASH",
   defaultCashBankAccountId: "",
   requireReceivableApproval: true,
-};
-
-const initialDocumentSetting = {
-  documentLanguage: "ID",
-  salesInvoicePrefix: "INV",
-  salesReturnPrefix: "SR",
-  purchaseReturnPrefix: "PR",
-  payrollSlipPrefix: "PAY",
-  reportPrefix: "RPT",
-  deliveryOrderPrefix: "",
-  resetNumberMonthly: true,
-  defaultPaperSize: "F4",
-  alternatePaperSize: "A4",
-  invoiceCopies: 3,
-  maxItemsF4: 12,
-  maxItemsA4: 8,
-  copyLabel1: "Customer",
-  copyLabel2: "Accounting",
-  copyLabel3: "Archive",
-  thankYouNote: "",
-  transactionProofNote: "",
-  complaintTerms: "",
-  returnTerms: "",
-  paymentTerms: "",
-  additionalNote: "",
-  responsiblePersonName: "",
-  responsiblePersonTitle: "",
-  showSignature: true,
-  signatureUrl: "",
-  showStamp: true,
-  stampUrl: "",
-  signatureText: "",
 };
 
 const initialBankForm = {
@@ -146,7 +108,6 @@ function SettingsPage() {
   const [operationalPreferences, setOperationalPreferences] = useState(
     initialOperationalPreferences
   );
-  const [documentSetting, setDocumentSetting] = useState(initialDocumentSetting);
   const [storeBankAccounts, setStoreBankAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [cashBankAccounts, setCashBankAccounts] = useState([]);
@@ -223,7 +184,6 @@ function SettingsPage() {
         storeProfileResponse,
         bankAccountsResponse,
         operationalResponse,
-        documentResponse,
         accountResponse,
         cashBankResponse,
         modulesResponse,
@@ -233,7 +193,6 @@ function SettingsPage() {
         settingsApi.getStoreProfile(),
         settingsApi.getStoreBankAccounts(),
         settingsApi.getOperationalPreferences(),
-        settingsApi.getDocumentSetting(),
         accountApi.getList(),
         cashBankApi.getList(),
         settingsApi.getModules(),
@@ -259,12 +218,6 @@ function SettingsPage() {
         operationalResponse.data?.data ||
         null;
 
-      const documentData =
-        documentResponse.data?.data?.documentSetting ||
-        documentResponse.data?.documentSetting ||
-        documentResponse.data?.data ||
-        null;
-
       const accountData =
         accountResponse.data?.data?.accounts ||
         accountResponse.data?.accounts ||
@@ -288,7 +241,7 @@ function SettingsPage() {
         rolePermissionsResponse.data?.roles ||
         rolePermissionsResponse.data?.data?.roles ||
         [];
-        
+
         const usersData =
         usersResponse.data?.data?.users ||
         usersResponse.data?.users ||
@@ -307,11 +260,6 @@ function SettingsPage() {
         ...(operationalData || {}),
         defaultCashBankAccountId:
           operationalData?.defaultCashBankAccountId || "",
-      });
-
-      setDocumentSetting({
-        ...initialDocumentSetting,
-        ...(documentData || {}),
       });
 
       setAccounts(Array.isArray(accountData) ? accountData : []);
@@ -351,15 +299,6 @@ function SettingsPage() {
     const { name, type, checked, value } = event.target;
 
     setOperationalPreferences((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleDocumentChange = (event) => {
-    const { name, type, checked, value } = event.target;
-
-    setDocumentSetting((current) => ({
       ...current,
       [name]: type === "checkbox" ? checked : value,
     }));
@@ -668,39 +607,6 @@ const handleSubmitResetPassword = (event) => {
         });
 
         setSuccessMessage("Preferensi operasional berhasil disimpan.");
-      },
-    });
-  };
-
-  const handleSaveDocument = () => {
-    setConfirmConfig({
-      title: "Simpan pengaturan dokumen?",
-      description:
-        "Prefix, ukuran kertas, catatan invoice, dan penanggung jawab dokumen akan diperbarui.",
-      confirmLabel: "Ya, Simpan",
-      action: async () => {
-        const payload = {
-          ...sanitizePayload(documentSetting),
-          resetNumberMonthly: Boolean(documentSetting.resetNumberMonthly),
-          invoiceCopies: Number(documentSetting.invoiceCopies || 1),
-          maxItemsF4: Number(documentSetting.maxItemsF4 || 1),
-          maxItemsA4: Number(documentSetting.maxItemsA4 || 1),
-          showSignature: Boolean(documentSetting.showSignature),
-          showStamp: Boolean(documentSetting.showStamp),
-        };
-
-        const response = await settingsApi.updateDocumentSetting(payload);
-        const updated =
-          response.data?.data?.documentSetting ||
-          response.data?.documentSetting ||
-          response.data?.data;
-
-        setDocumentSetting({
-          ...initialDocumentSetting,
-          ...(updated || payload),
-        });
-
-        setSuccessMessage("Pengaturan dokumen berhasil disimpan.");
       },
     });
   };
@@ -1035,7 +941,7 @@ const handleSubmitResetPassword = (event) => {
     <ListPageLayout
       eyebrow=""
       title="Pengaturan"
-      description="Kelola profil toko, rekening invoice, preferensi operasional, dan pengaturan dokumen resmi."
+      description="Kelola profil toko, rekening invoice, preferensi operasional, hak akses, dan akun pengguna."
       actions={
         <Button variant="secondary" onClick={fetchSettings} disabled={isLoading}>
           <RefreshCcw size={16} />
@@ -1191,143 +1097,6 @@ const handleSubmitResetPassword = (event) => {
               />
               <span>Wajib approval untuk penjualan piutang</span>
             </label>
-          </div>
-        </SettingsCard>
-      ) : null}
-
-      {activeTab === "document" ? (
-        <SettingsCard
-          title="Pengaturan Dokumen"
-          description="Atur prefix, ukuran kertas, rangkap invoice, catatan, dan penanggung jawab dokumen."
-          onSave={handleSaveDocument}
-          isLoading={isLoading}
-        >
-            <div className="settings-pdf-preview">
-            <div className="settings-pdf-preview-header">
-                <span>Header PDF</span>
-                <strong>Data diambil dari Profil Toko</strong>
-                <p>
-                Bagian ini hanya preview. Untuk mengubah identitas usaha, edit dari tab
-                Profil Toko.
-                </p>
-            </div>
-
-            <div className="settings-pdf-preview-grid">
-                <div>
-                <span>Nama Toko</span>
-                <strong>{storeProfile.name || "-"}</strong>
-                </div>
-
-                <div>
-                <span>Legal Name</span>
-                <strong>{storeProfile.legalName || "-"}</strong>
-                </div>
-
-                <div>
-                <span>Telepon</span>
-                <strong>{storeProfile.phone || "-"}</strong>
-                </div>
-
-                <div>
-                <span>Email</span>
-                <strong>{storeProfile.email || "-"}</strong>
-                </div>
-
-                <div>
-                <span>Website</span>
-                <strong>{storeProfile.website || "-"}</strong>
-                </div>
-
-                <div>
-                <span>Social Media</span>
-                <strong>{storeProfile.socialMedia || "-"}</strong>
-                </div>
-
-                <div>
-                <span>NPWP</span>
-                <strong>{storeProfile.taxNumber || "-"}</strong>
-                </div>
-
-                <div>
-                <span>NIB</span>
-                <strong>{storeProfile.businessNumber || "-"}</strong>
-                </div>
-
-                <div className="is-full">
-                <span>Alamat</span>
-                <strong>{storeProfile.address || "-"}</strong>
-                </div>
-            </div>
-            </div>
-            
-          <div className="settings-form-grid">
-            <label className="settings-field">
-              <span>Bahasa Dokumen</span>
-              <select name="documentLanguage" value={documentSetting.documentLanguage} onChange={handleDocumentChange}>
-                <option value="ID">Indonesia</option>
-                <option value="EN">English</option>
-              </select>
-            </label>
-
-            <SettingsInput label="Prefix Invoice" name="salesInvoicePrefix" value={documentSetting.salesInvoicePrefix} onChange={handleDocumentChange} />
-            <SettingsInput label="Prefix Retur Penjualan" name="salesReturnPrefix" value={documentSetting.salesReturnPrefix} onChange={handleDocumentChange} />
-            <SettingsInput label="Prefix Retur Pembelian" name="purchaseReturnPrefix" value={documentSetting.purchaseReturnPrefix} onChange={handleDocumentChange} />
-            <SettingsInput label="Prefix Slip Gaji" name="payrollSlipPrefix" value={documentSetting.payrollSlipPrefix} onChange={handleDocumentChange} />
-            <SettingsInput label="Prefix Report" name="reportPrefix" value={documentSetting.reportPrefix} onChange={handleDocumentChange} />
-            <SettingsInput label="Prefix Delivery Order" name="deliveryOrderPrefix" value={documentSetting.deliveryOrderPrefix} onChange={handleDocumentChange} />
-
-            <label className="settings-field">
-              <span>Default Paper Size</span>
-              <select name="defaultPaperSize" value={documentSetting.defaultPaperSize} onChange={handleDocumentChange}>
-                <option value="F4">F4</option>
-                <option value="A4">A4</option>
-              </select>
-            </label>
-
-            <label className="settings-field">
-              <span>Alternate Paper Size</span>
-              <select name="alternatePaperSize" value={documentSetting.alternatePaperSize} onChange={handleDocumentChange}>
-                <option value="F4">F4</option>
-                <option value="A4">A4</option>
-              </select>
-            </label>
-
-            <SettingsInput label="Jumlah Rangkap Invoice" name="invoiceCopies" type="number" value={documentSetting.invoiceCopies} onChange={handleDocumentChange} />
-            <SettingsInput label="Max Items F4" name="maxItemsF4" type="number" value={documentSetting.maxItemsF4} onChange={handleDocumentChange} />
-            <SettingsInput label="Max Items A4" name="maxItemsA4" type="number" value={documentSetting.maxItemsA4} onChange={handleDocumentChange} />
-
-            <SettingsInput label="Label Copy 1" name="copyLabel1" value={documentSetting.copyLabel1} onChange={handleDocumentChange} />
-            <SettingsInput label="Label Copy 2" name="copyLabel2" value={documentSetting.copyLabel2} onChange={handleDocumentChange} />
-            <SettingsInput label="Label Copy 3" name="copyLabel3" value={documentSetting.copyLabel3} onChange={handleDocumentChange} />
-
-            <SettingsInput label="Penanggung Jawab" name="responsiblePersonName" value={documentSetting.responsiblePersonName} onChange={handleDocumentChange} />
-            <SettingsInput label="Jabatan Penanggung Jawab" name="responsiblePersonTitle" value={documentSetting.responsiblePersonTitle} onChange={handleDocumentChange} />
-            <SettingsInput label="Signature Text" name="signatureText" value={documentSetting.signatureText} onChange={handleDocumentChange} />
-
-            <SettingsInput label="Signature URL" name="signatureUrl" value={documentSetting.signatureUrl} onChange={handleDocumentChange} />
-            <SettingsInput label="Stamp URL" name="stampUrl" value={documentSetting.stampUrl} onChange={handleDocumentChange} />
-
-            <label className="settings-toggle-row">
-              <input type="checkbox" name="resetNumberMonthly" checked={Boolean(documentSetting.resetNumberMonthly)} onChange={handleDocumentChange} />
-              <span>Reset nomor dokumen setiap bulan</span>
-            </label>
-
-            <label className="settings-toggle-row">
-              <input type="checkbox" name="showSignature" checked={Boolean(documentSetting.showSignature)} onChange={handleDocumentChange} />
-              <span>Tampilkan tanda tangan</span>
-            </label>
-
-            <label className="settings-toggle-row">
-              <input type="checkbox" name="showStamp" checked={Boolean(documentSetting.showStamp)} onChange={handleDocumentChange} />
-              <span>Tampilkan cap/stamp</span>
-            </label>
-
-            <SettingsTextarea label="Thank You Note" name="thankYouNote" value={documentSetting.thankYouNote} onChange={handleDocumentChange} />
-            <SettingsTextarea label="Catatan Bukti Transaksi" name="transactionProofNote" value={documentSetting.transactionProofNote} onChange={handleDocumentChange} />
-            <SettingsTextarea label="Ketentuan Komplain" name="complaintTerms" value={documentSetting.complaintTerms} onChange={handleDocumentChange} />
-            <SettingsTextarea label="Ketentuan Retur" name="returnTerms" value={documentSetting.returnTerms} onChange={handleDocumentChange} />
-            <SettingsTextarea label="Ketentuan Pembayaran" name="paymentTerms" value={documentSetting.paymentTerms} onChange={handleDocumentChange} />
-            <SettingsTextarea label="Catatan Tambahan" name="additionalNote" value={documentSetting.additionalNote} onChange={handleDocumentChange} />
           </div>
         </SettingsCard>
       ) : null}
@@ -1514,7 +1283,7 @@ const handleSubmitResetPassword = (event) => {
                 document.body
                 )
             : null}
-        
+
         {isResetPasswordModalOpen
             ? createPortal(
                 <div className="cash-bank-modal-backdrop">
@@ -1716,13 +1485,6 @@ function SettingsSummary({ activeTab }) {
       value: "Default",
       helper: "Piutang, hutang, pembayaran",
       tone: "cash",
-    },
-    document: {
-      icon: FileText,
-      label: "Dokumen",
-      value: "Invoice & Slip",
-      helper: "Prefix, catatan, signature",
-      tone: "total",
     },
     permissions: {
     icon: UsersRound,

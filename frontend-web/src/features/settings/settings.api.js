@@ -43,14 +43,7 @@ export const settingsApi = {
     return apiClient.put("/settings/operational-preferences", payload);
   },
 
-  getDocumentSetting() {
-    return apiClient.get("/settings/document");
-  },
-
-  updateDocumentSetting(payload) {
-    return apiClient.put("/settings/document", payload);
-  },
-    getModules() {
+  getModules() {
     return apiClient.get("/settings/modules");
   },
 
