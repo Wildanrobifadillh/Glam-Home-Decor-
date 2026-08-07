@@ -2,6 +2,7 @@ const ExcelJS = require("exceljs");
 
 const prisma = require("../../config/prisma");
 const settingsService = require("../settings/settings.service");
+const { getStoreName } = require("../../utils/storeBrand");
 
 const {
   generateSalesReportPdfBuffer,
@@ -1045,13 +1046,13 @@ const exportSalesReportExcel = async ({
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Penjualan");
 
   worksheet.mergeCells("A1:S1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -1479,13 +1480,13 @@ const exportPurchaseReportExcel = async ({
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Pembelian");
 
   worksheet.mergeCells("A1:N1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -1920,13 +1921,13 @@ const exportStockReportExcel = async ({
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Stok");
 
   worksheet.mergeCells("A1:M1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -2452,13 +2453,13 @@ const exportPayrollReportExcel = async ({
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Payroll");
 
   worksheet.mergeCells("A1:P1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -2854,13 +2855,13 @@ const exportProfitLossReportExcel = async ({ startDate, endDate } = {}) => {
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Laba Rugi");
 
   worksheet.mergeCells("A1:F1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -3157,13 +3158,13 @@ const exportCashFlowReportExcel = async ({ startDate, endDate } = {}) => {
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Arus Kas");
 
   worksheet.mergeCells("A1:K1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,
@@ -3516,13 +3517,13 @@ const exportBalanceSheetReportExcel = async ({ endDate } = {}) => {
 
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = storeProfile.name || "Glam Home Decor";
+  workbook.creator = getStoreName(storeProfile);
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet("Laporan Neraca");
 
   worksheet.mergeCells("A1:F1");
-  worksheet.getCell("A1").value = storeProfile.name || "Glam Home Decor";
+  worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
     size: 16,

@@ -1,13 +1,16 @@
 const PDFDocument = require("pdfkit");
 
+const {
+  getStoreName,
+  getStoreSocialMedia,
+} = require("../../utils/storeBrand");
+
 const PAPER_SIZES = {
   A4: [595.28, 841.89],
   F4: [612, 936],
   CONTINUOUS_95X11: [684, 792],
 };
 
-const STORE_DISPLAY_NAME = "GHD Home Decor";
-const STORE_INSTAGRAM = "Instagram @ghdhome_decor";
 
 const formatDate = (value) => {
   if (!value) {
@@ -79,7 +82,7 @@ const drawCell = (
   });
 };
 
-const getSafeStoreName = () => STORE_DISPLAY_NAME;
+const getSafeStoreName = (store) => getStoreName(store);
 
 const buildStoreMetaLines = (store) => {
   const lines = [];
@@ -101,7 +104,7 @@ const buildStoreMetaLines = (store) => {
     }
   }
 
-  lines.push(STORE_INSTAGRAM);
+  lines.push(getStoreSocialMedia(store));
 
   return lines;
 };
@@ -507,6 +510,7 @@ const drawSignatureSection = (
   margin,
   startY
 ) => {
+  const storeName = getSafeStoreName(preview.store);
   const contentWidth = pageWidth - margin * 2;
   const blockWidth = 260;
   const gap = contentWidth - blockWidth * 2;
@@ -539,7 +543,7 @@ const drawSignatureSection = (
     align: "center",
   });
 
-  drawText(doc, STORE_DISPLAY_NAME, rightX, y + 18, {
+  drawText(doc, storeName, rightX, y + 18, {
     width: blockWidth,
     align: "center",
   });

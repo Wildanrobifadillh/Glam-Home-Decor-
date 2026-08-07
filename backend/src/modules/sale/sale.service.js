@@ -1,5 +1,6 @@
 const prisma = require("../../config/prisma");
 const settingsService = require("../settings/settings.service");
+const { DEFAULT_STORE_NAME } = require("../../utils/storeBrand");
 const { generateSaleNumber } = require("../../utils/generateSaleNumber");
 const {
   createJournalEntryWithLines,
@@ -1340,13 +1341,13 @@ const generateSaleInvoice = async (saleId) => {
         copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
         copyLabel3: "LEMBAR 3 - ARSIP TOKO",
         thankYouNote:
-          "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+          `Terima kasih atas kepercayaan Anda berbelanja di ${DEFAULT_STORE_NAME}.`,
         transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
         complaintTerms:
           "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
         returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
         paymentTerms:
-          "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+          `Pembayaran dianggap sah setelah dana diterima oleh pihak ${DEFAULT_STORE_NAME}.`,
         additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
         responsiblePersonName: "Zaid Ishmatul Fawaid",
         responsiblePersonTitle: "Penanggung Jawab / Owner",
@@ -1354,7 +1355,7 @@ const generateSaleInvoice = async (saleId) => {
         signatureUrl: null,
         showStamp: true,
         stampUrl: null,
-        signatureText: "Hormat kami,\nGlam Home Decor",
+        signatureText: `Hormat kami,\n${DEFAULT_STORE_NAME}`,
       },
     });
 
@@ -1458,13 +1459,13 @@ const generateSaleDeliveryOrder = async (saleId) => {
         copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
         copyLabel3: "LEMBAR 3 - ARSIP TOKO",
         thankYouNote:
-          "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+          `Terima kasih atas kepercayaan Anda berbelanja di ${DEFAULT_STORE_NAME}.`,
         transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
         complaintTerms:
           "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
         returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
         paymentTerms:
-          "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+          `Pembayaran dianggap sah setelah dana diterima oleh pihak ${DEFAULT_STORE_NAME}.`,
         additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
         responsiblePersonName: "Zaid Ishmatul Fawaid",
         responsiblePersonTitle: "Penanggung Jawab / Owner",
@@ -1472,7 +1473,7 @@ const generateSaleDeliveryOrder = async (saleId) => {
         signatureUrl: null,
         showStamp: true,
         stampUrl: null,
-        signatureText: "Hormat kami,\nGlam Home Decor",
+        signatureText: `Hormat kami,\n${DEFAULT_STORE_NAME}`,
       },
     });
 

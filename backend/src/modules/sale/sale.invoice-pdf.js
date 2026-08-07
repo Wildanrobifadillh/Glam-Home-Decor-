@@ -1,5 +1,10 @@
 const PDFDocument = require("pdfkit");
 
+const {
+  getStoreName,
+  getStoreSocialMedia,
+} = require("../../utils/storeBrand");
+
 const PAPER_SIZES = {
   A4: [595.28, 841.89],
   F4: [595.28, 935.43],
@@ -81,7 +86,7 @@ const drawInvoiceReceiverSection = (doc, x, y, width) => {
   return lineY + 8;
 };
 
-const drawInvoiceSenderSection = (doc, x, y, width) => {
+const drawInvoiceSenderSection = (doc, x, y, width, storeName) => {
   doc.font("Helvetica-Bold").fontSize(8);
   drawText(doc, "Hormat kami,", x, y, {
     width,
@@ -89,7 +94,7 @@ const drawInvoiceSenderSection = (doc, x, y, width) => {
   });
 
   doc.font("Helvetica-Bold").fontSize(8);
-  drawText(doc, "GHD Home Decor", x, y + 14, {
+  drawText(doc, storeName, x, y + 14, {
     width,
     align: "center",
   });
@@ -113,6 +118,9 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     authorization,
   } = invoicePreview;
 
+  const storeName = getStoreName(store);
+  const storeSocialMedia = getStoreSocialMedia(store);
+
   const pageWidth = doc.page.width;
   const margin = 24;
   const contentWidth = pageWidth - margin * 2;
@@ -120,14 +128,14 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   let y = margin;
 
   doc.font("Helvetica-Bold").fontSize(14);
-  drawText(doc, "GHD Home Decor", margin, y, { width: 340 });
+  drawText(doc, storeName, margin, y, { width: 340 });
 
   doc.font("Helvetica").fontSize(7);
   drawText(doc, store.address, margin, y + 16, { width: 300 });
   drawText(doc, `Telp: ${store.phone || "-"}`, margin, y + 30, { width: 220 });
   drawText(doc, `Email: ${store.email || "-"}`, margin, y + 42, { width: 260 });
 
-  drawText(doc, "Instagram @ghdhome_decor", margin, y + 54, { width: 260 });
+  drawText(doc, storeSocialMedia, margin, y + 54, { width: 260 });
 
   doc.font("Helvetica-Bold").fontSize(16);
   drawText(doc, "INVOICE", pageWidth - margin - 180, y, {
@@ -417,7 +425,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     notes.transactionProofNote ||
       "Invoice ini merupakan bukti transaksi resmi.",
     notes.paymentTerms ||
-      "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+      `Pembayaran dianggap sah setelah dana diterima oleh pihak ${storeName}.`,
     notes.complaintTerms ||
       "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
     notes.returnTerms ||
@@ -446,7 +454,8 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     doc,
     rightXFooter,
     footerY,
-    blockWidth
+    blockWidth,
+    storeName
   );
 };
 

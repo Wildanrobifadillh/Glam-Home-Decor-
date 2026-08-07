@@ -1,6 +1,11 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../../config/prisma");
 
+const {
+  DEFAULT_STORE_NAME,
+  DEFAULT_STORE_SOCIAL_MEDIA,
+} = require("../../utils/storeBrand");
+
 const OPERATIONAL_PREFERENCE_KEY = "MAIN";
 const STORE_PROFILE_KEY = "MAIN";
 const DOCUMENT_SETTING_KEY = "MAIN";
@@ -8,15 +13,15 @@ const DOCUMENT_SETTING_KEY = "MAIN";
 
 const getDefaultStoreProfileData = () => ({
   key: STORE_PROFILE_KEY,
-  name: "Glam Home Decor",
-  legalName: "Glam Home Decor",
+  name: DEFAULT_STORE_NAME,
+  legalName: DEFAULT_STORE_NAME,
   brandShortName: "GHD",
   address:
     "Jl. Ir. H. Juanda No.100c, Panyingkiran, Kec. Bungursari, Kab. Tasikmalaya, Jawa Barat 46151",
   phone: "081228811006",
   email: null,
   website: null,
-  socialMedia: "Instagram @glamhome_decor",
+  socialMedia: DEFAULT_STORE_SOCIAL_MEDIA,
   logoUrl: null,
   taxNumber: null,
   businessNumber: null,
@@ -1165,13 +1170,13 @@ const getDefaultDocumentSettingData = () => ({
     copyLabel3: "LEMBAR 3 - ARSIP TOKO",
 
   thankYouNote:
-    "Terima kasih atas kepercayaan Anda berbelanja di Glam Home Decor.",
+    `Terima kasih atas kepercayaan Anda berbelanja di ${DEFAULT_STORE_NAME}.`,
   transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
   complaintTerms:
     "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
   returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
   paymentTerms:
-    "Pembayaran dianggap sah setelah dana diterima oleh pihak Glam Home Decor.",
+    `Pembayaran dianggap sah setelah dana diterima oleh pihak ${DEFAULT_STORE_NAME}.`,
   additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
 
   responsiblePersonName: "Zaid Ishmatul Fawaid",
@@ -1180,7 +1185,7 @@ const getDefaultDocumentSettingData = () => ({
   signatureUrl: null,
   showStamp: true,
   stampUrl: null,
-  signatureText: "Hormat kami,\nGlam Home Decor",
+  signatureText: `Hormat kami,\n${DEFAULT_STORE_NAME}`,
 });
 
 const getDocumentSetting = async () => {

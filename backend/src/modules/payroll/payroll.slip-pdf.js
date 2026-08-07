@@ -1,4 +1,5 @@
 const PDFDocument = require("pdfkit");
+const { getStoreName } = require("../../utils/storeBrand");
 const PAPER_SIZES = {
   A4: [595.28, 841.89],
 };
@@ -370,7 +371,7 @@ const generatePayrollSlipPdfBuffer = async (slipPreview) => {
         align: "center",
       });
 
-      drawText(doc, store.name || "Glam Home Decor", rightSignatureX, signatureY + 14, {
+      drawText(doc, getStoreName(store), rightSignatureX, signatureY + 14, {
         width: 190,
         align: "center",
       });

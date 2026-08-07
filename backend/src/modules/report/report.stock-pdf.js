@@ -1,5 +1,7 @@
 const PDFDocument = require("pdfkit");
 
+const { getStoreName } = require("../../utils/storeBrand");
+
 const PAPER_SIZES = {
   A4_LANDSCAPE: [841.89, 595.28],
 };
@@ -67,7 +69,7 @@ const drawReportHeader = ({ doc, storeProfile, filterLabel }) => {
   let y = 32;
 
   doc.font("Helvetica-Bold").fontSize(14);
-  drawText(doc, storeProfile.name || "Glam Home Decor", margin, y, {
+  drawText(doc, getStoreName(storeProfile), margin, y, {
     width: 300,
   });
 
