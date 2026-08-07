@@ -1513,14 +1513,6 @@ const generateSaleInvoicePdf = async (saleId) => {
     throw error;
   }
 
-  if (invoicePreview.items.length > invoicePreview.invoice.maxItems) {
-    const error = new Error(
-      `Invoice item limit exceeded for ${invoicePreview.invoice.paperSize}. Maximum item is ${invoicePreview.invoice.maxItems}`
-    );
-    error.status = 400;
-    throw error;
-  }
-
   if (!invoicePreview.summary.isCalculationMatched) {
     const error = new Error("Invoice calculation mismatch");
     error.status = 400;
@@ -1541,17 +1533,6 @@ const generateSaleDeliveryOrderPdf = async (saleId) => {
   if (!deliveryOrderPreview.deliveryOrder.isOfficialDeliveryOrder) {
     const error = new Error(
       "Generate delivery order number before creating PDF"
-    );
-    error.status = 400;
-    throw error;
-  }
-
-  if (
-    deliveryOrderPreview.items.length >
-    deliveryOrderPreview.deliveryOrder.maxItems
-  ) {
-    const error = new Error(
-      `Delivery order item limit exceeded for ${deliveryOrderPreview.deliveryOrder.paperSize}. Maximum item is ${deliveryOrderPreview.deliveryOrder.maxItems}`
     );
     error.status = 400;
     throw error;

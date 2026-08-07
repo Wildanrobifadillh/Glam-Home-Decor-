@@ -122,6 +122,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   const storeSocialMedia = getStoreSocialMedia(store);
 
   const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
   const margin = 24;
   const contentWidth = pageWidth - margin * 2;
 
@@ -212,7 +213,7 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
   y += 12;
 
   const headerHeight = 18;
-  const rowHeight = 17;
+  const minRowHeight = 17;
 
   const columnWidths = {
     no: 26,
@@ -275,38 +276,95 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     });
   };
 
-  doc.rect(tableX, y, tableWidth, headerHeight).stroke();
-  drawTableVerticalLines(y, headerHeight);
+const drawContinuationHeader = (startY) => {
+  doc.font("Helvetica-Bold").fontSize(14);
 
-  drawCell(doc, "No", columns.no, y, columnWidths.no, headerHeight, {
+  drawText(doc, storeName, margin, startY, {
+    width: 340,
+  });
+
+  doc.font("Helvetica-Bold").fontSize(16);
+
+  drawText(doc, "INVOICE", pageWidth - margin - 180, startY, {
+    width: 180,
+    align: "right",
+  });
+
+  doc.font("Helvetica").fontSize(7);
+
+  drawText(
+    doc,
+    `No. Invoice: ${invoice.invoiceNumber || "-"}`,
+    pageWidth - margin - 220,
+    startY + 22,
+    {
+      width: 220,
+      align: "right",
+    }
+  );
+
+  const lineY = startY + 42;
+  drawLine(doc, margin, lineY, pageWidth - margin, lineY);
+
+  return lineY + 10;
+};
+const drawTableHeader = (headerY) => {
+  doc.rect(tableX, headerY, tableWidth, headerHeight).stroke();
+  drawTableVerticalLines(headerY, headerHeight);
+
+  drawCell(doc, "No", columns.no, headerY, columnWidths.no, headerHeight, {
     align: "center",
     font: "Helvetica-Bold",
   });
-  drawCell(doc, "Kode", columns.code, y, columnWidths.code, headerHeight, {
-    align: "center",
-    font: "Helvetica-Bold",
-  });
-  drawCell(doc, "Nama Barang", columns.name, y, columnWidths.name, headerHeight, {
-    align: "center",
-    font: "Helvetica-Bold",
-  });
-  drawCell(doc, "Qty", columns.qty, y, columnWidths.qty, headerHeight, {
-    align: "center",
-    font: "Helvetica-Bold",
-  });
-  drawCell(doc, "Satuan", columns.unit, y, columnWidths.unit, headerHeight, {
-    align: "center",
-    font: "Helvetica-Bold",
-  });
-  drawCell(doc, "Harga", columns.price, y, columnWidths.price, headerHeight, {
+  drawCell(doc, "Kode", columns.code, headerY, columnWidths.code, headerHeight, {
     align: "center",
     font: "Helvetica-Bold",
   });
   drawCell(
     doc,
+    "Nama Barang",
+    columns.name,
+    headerY,
+    columnWidths.name,
+    headerHeight,
+    {
+      align: "center",
+      font: "Helvetica-Bold",
+    }
+  );
+  drawCell(doc, "Qty", columns.qty, headerY, columnWidths.qty, headerHeight, {
+    align: "center",
+    font: "Helvetica-Bold",
+  });
+  drawCell(
+    doc,
+    "Satuan",
+    columns.unit,
+    headerY,
+    columnWidths.unit,
+    headerHeight,
+    {
+      align: "center",
+      font: "Helvetica-Bold",
+    }
+  );
+  drawCell(
+    doc,
+    "Harga",
+    columns.price,
+    headerY,
+    columnWidths.price,
+    headerHeight,
+    {
+      align: "center",
+      font: "Helvetica-Bold",
+    }
+  );
+  drawCell(
+    doc,
     "Subtotal",
     columns.subtotal,
-    y,
+    headerY,
     columnWidths.subtotal,
     headerHeight,
     {
@@ -315,9 +373,53 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     }
   );
 
-  y += headerHeight;
+  return headerY + headerHeight;
+};
+
+y = drawTableHeader(y);
+
+  doc.font("Helvetica").fontSize(8);
 
   (items || []).forEach((item) => {
+const rowHeight =
+  Math.max(
+    doc.heightOfString(String(item.no ?? "-"), {
+      width: columnWidths.no - 8,
+      align: "center",
+    }),
+    doc.heightOfString(item.productCode || "-", {
+      width: columnWidths.code - 8,
+      align: "center",
+    }),
+    doc.heightOfString(item.productName || "-", {
+      width: columnWidths.name - 8,
+      align: "left",
+    }),
+    doc.heightOfString(String(item.quantity ?? "-"), {
+      width: columnWidths.qty - 8,
+      align: "center",
+    }),
+    doc.heightOfString(item.unit || "-", {
+      width: columnWidths.unit - 8,
+      align: "center",
+    }),
+    doc.heightOfString(formatCurrency(item.sellingPrice), {
+      width: columnWidths.price - 8,
+      align: "center",
+    }),
+    doc.heightOfString(formatCurrency(item.subtotal), {
+      width: columnWidths.subtotal - 8,
+      align: "center",
+    }),
+    minRowHeight - 6
+  ) + 6;
+
+if (y + rowHeight > pageHeight - margin - 24) {
+  doc.addPage();
+  y = drawContinuationHeader(margin);
+  y = drawTableHeader(y);
+  doc.font("Helvetica").fontSize(8);
+}
     doc.rect(tableX, y, tableWidth, rowHeight).stroke();
     drawTableVerticalLines(y, rowHeight);
 
@@ -368,14 +470,26 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     );
 
     y += rowHeight;
-  });
+});
 
-  y += 14;
+const summaryRowHeight = 15;
+const summaryRowCount =
+  6 + (summary.additionalCosts || []).length;
+const summaryBlockHeight = summaryRowCount * summaryRowHeight + 5;
+const paymentBlockHeight = 42;
+const summaryAndPaymentHeight =
+  Math.max(summaryBlockHeight, paymentBlockHeight) + 26;
 
-  const summaryLabelWidth = 180;
+if (y + summaryAndPaymentHeight > pageHeight - margin) {
+  doc.addPage();
+  y = drawContinuationHeader(margin);
+}
+
+y += 14;
+
+const summaryLabelWidth = 180;
   const summaryValueWidth = 120;
   const summaryX = pageWidth - margin - summaryLabelWidth - summaryValueWidth;
-  const summaryRowHeight = 15;
   let summaryY = y;
 
   doc.font("Helvetica").fontSize(9);
@@ -434,17 +548,31 @@ const drawInvoiceCopy = ({ doc, invoicePreview, copyLabel }) => {
     .filter(Boolean)
     .join(", ");
 
-  doc.font("Helvetica-Bold").fontSize(8);
-  drawText(doc, "Catatan:", margin, y, { width: 180 });
-  y += 10;
-
   doc.font("Helvetica").fontSize(7);
-  drawText(doc, shortNote, margin, y, {
-    width: contentWidth,
-    align: "left",
-  });
 
-  const footerY = y + 34;
+const noteHeight = doc.heightOfString(shortNote, {
+  width: contentWidth,
+  align: "left",
+});
+
+const noteAndSignatureHeight = 10 + noteHeight + 14 + 52;
+
+if (y + noteAndSignatureHeight > pageHeight - margin) {
+  doc.addPage();
+  y = drawContinuationHeader(margin);
+}
+
+doc.font("Helvetica-Bold").fontSize(8);
+drawText(doc, "Catatan:", margin, y, { width: 180 });
+y += 10;
+
+doc.font("Helvetica").fontSize(7);
+drawText(doc, shortNote, margin, y, {
+  width: contentWidth,
+  align: "left",
+});
+
+const footerY = y + noteHeight + 14;
   const blockWidth = 190;
   const leftX = margin;
   const rightXFooter = pageWidth - margin - blockWidth;
@@ -479,23 +607,13 @@ const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      const printScale = 0.88;
-      const printOffsetX = 0;
-      const printOffsetY = 0;
-
-      doc.save();
-      doc.translate(printOffsetX, printOffsetY);
-      doc.scale(printScale);
-
       drawInvoiceCopy({
-        doc,
-        invoicePreview,
-        copyLabel: invoicePreview.invoice.copyLabels[0] || null,
-      });
+  doc,
+  invoicePreview,
+  copyLabel: invoicePreview.invoice.copyLabels[0] || null,
+});
 
-      doc.restore();
-
-      doc.end();
+doc.end();
     } catch (error) {
       reject(error);
     }

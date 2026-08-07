@@ -384,7 +384,7 @@ const drawItemsTable = (doc, preview, pageWidth, pageHeight, margin, startY) => 
         14
       ) + 10;
 
-    if (y + rowHeight > pageHeight - margin - 180) {
+    if (y + rowHeight > pageHeight - margin - 24) {
       doc.addPage();
       y = margin;
       y = drawTableHeaderGrid(doc, tableX, y, widths);
@@ -443,12 +443,60 @@ const drawItemsTable = (doc, preview, pageWidth, pageHeight, margin, startY) => 
   return y + 14;
 };
 
-const drawSummaryAndNotes = (doc, preview, pageWidth, margin, startY) => {
+const drawSummaryAndNotes = (
+  doc,
+  preview,
+  pageWidth,
+  pageHeight,
+  margin,
+  startY
+) => {
   const summary = preview.summary || {};
   const notes = preview.notes || {};
   const contentWidth = pageWidth - margin * 2;
 
+  const documentNote =
+    typeof notes.additionalNote === "string" &&
+    !/invoice/i.test(notes.additionalNote)
+      ? notes.additionalNote
+      : "";
+
+  const saleNoteText = notes.saleNote
+    ? `Catatan Penjualan: ${notes.saleNote}`
+    : "";
+
+  const docNoteText = documentNote
+    ? `Catatan Dokumen: ${documentNote}`
+    : "";
+
+  doc.font("Helvetica").fontSize(9);
+
+  const saleNoteHeight = saleNoteText
+    ? doc.heightOfString(saleNoteText, {
+        width: contentWidth,
+      })
+    : 0;
+
+  const docNoteHeight = docNoteText
+    ? doc.heightOfString(docNoteText, {
+        width: contentWidth,
+      })
+    : 0;
+
+  const hasNotes = Boolean(saleNoteText || docNoteText);
+
+  const requiredHeight =
+    58 +
+    (hasNotes ? 18 : 0) +
+    (saleNoteText ? saleNoteHeight + 6 : 0) +
+    (docNoteText ? docNoteHeight + 6 : 0);
+
   let y = startY;
+
+  if (y + requiredHeight > pageHeight - margin) {
+    doc.addPage();
+    y = margin;
+  }
 
   doc.font("Helvetica-Bold").fontSize(10);
   drawText(doc, "Ringkasan Pengiriman", margin, y);
@@ -465,43 +513,30 @@ const drawSummaryAndNotes = (doc, preview, pageWidth, margin, startY) => {
   });
   y += 18;
 
-  const documentNote =
-    typeof notes.additionalNote === "string" &&
-    !/invoice/i.test(notes.additionalNote)
-      ? notes.additionalNote
-      : "";
-
-  if (notes.saleNote || documentNote) {
+  if (hasNotes) {
     doc.font("Helvetica-Bold").fontSize(10);
     drawText(doc, "Catatan", margin, y);
     y += 18;
 
     doc.font("Helvetica").fontSize(9);
 
-    if (notes.saleNote) {
-      const saleNoteText = `Catatan Penjualan: ${notes.saleNote}`;
+    if (saleNoteText) {
       drawText(doc, saleNoteText, margin, y, {
         width: contentWidth,
       });
-      y += doc.heightOfString(saleNoteText, {
-        width: contentWidth,
-      }) + 6;
+      y += saleNoteHeight + 6;
     }
 
-    if (documentNote) {
-      const docNoteText = `Catatan Dokumen: ${documentNote}`;
+    if (docNoteText) {
       drawText(doc, docNoteText, margin, y, {
         width: contentWidth,
       });
-      y += doc.heightOfString(docNoteText, {
-        width: contentWidth,
-      }) + 6;
+      y += docNoteHeight + 6;
     }
   }
 
   return y + 8;
 };
-
 const drawSignatureSection = (
   doc,
   preview,
@@ -566,7 +601,14 @@ const drawDeliveryOrder = (doc, preview) => {
  y = drawHeader(doc, preview, pageWidth, margin, y);
  y = drawDocumentAndDestinationSection(doc, preview, pageWidth, margin, y);
  y = drawItemsTable(doc, preview, pageWidth, pageHeight, margin, y);
- y = drawSummaryAndNotes(doc, preview, pageWidth, margin, y);
+y = drawSummaryAndNotes(
+  doc,
+  preview,
+  pageWidth,
+  pageHeight,
+  margin,
+  y
+);
   drawSignatureSection(doc, preview, pageWidth, pageHeight, margin, y);
 };
 
@@ -598,18 +640,9 @@ const generateSaleDeliveryOrderPdfBuffer = async (deliveryOrderPreview) => {
         reject(error);
       });
 
-      const printScale = 0.88;
-      const printOffsetX = 0;
-      const printOffsetY = 0;
-
-      doc.save();
-      doc.translate(printOffsetX, printOffsetY);
-      doc.scale(printScale);
-
       drawDeliveryOrder(doc, deliveryOrderPreview);
 
-      doc.restore();
-      doc.end();
+doc.end();
     } catch (error) {
       reject(error);
     }
