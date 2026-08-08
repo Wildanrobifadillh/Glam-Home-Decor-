@@ -21,6 +21,7 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { getDownloadErrorMessage } from "../../utils/getDownloadErrorMessage";
 import {
   downloadBlobResponse,
   openPdfBlobResponse,
@@ -204,7 +205,7 @@ function ReportsPage() {
         openPdfBlobResponse(response);
       }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExporting("");
     }

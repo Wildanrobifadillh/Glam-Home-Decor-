@@ -23,6 +23,7 @@ import { downloadFile, getFileNameFromContentDisposition } from "../../utils/dow
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { getDownloadErrorMessage } from "../../utils/getDownloadErrorMessage";
 import { saleApi } from "./sale.api";
 
 function SaleReportPage() {
@@ -150,7 +151,7 @@ function SaleReportPage() {
         fileName,
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExportingPdf(false);
     }
@@ -172,7 +173,7 @@ function SaleReportPage() {
         fileName,
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExportingExcel(false);
     }

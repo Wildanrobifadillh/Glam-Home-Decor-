@@ -21,6 +21,7 @@ import { cashBankApi } from "../cash-bank/cashBank.api";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { getDownloadErrorMessage } from "../../utils/getDownloadErrorMessage";
 import { saleApi } from "./sale.api";
 
 
@@ -231,14 +232,7 @@ function SaleDetailPage() {
         }
     } catch (error) {
         console.error("Download invoice PDF error:", error);
-
-        if (error?.message === "Network Error") {
-        setErrorMessage("");
-        setSuccessMessage("PDF invoice berhasil diunduh.");
-        return;
-        }
-
-        setErrorMessage(getErrorMessage(error));
+        setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
         setIsActionLoading(false);
     }
@@ -275,14 +269,7 @@ function SaleDetailPage() {
     }
   } catch (error) {
     console.error("Download delivery order PDF error:", error);
-
-    if (error?.message === "Network Error") {
-      setErrorMessage("");
-      setSuccessMessage("PDF surat jalan berhasil diunduh.");
-      return;
-    }
-
-    setErrorMessage(getErrorMessage(error));
+    setErrorMessage(await getDownloadErrorMessage(error));
   } finally {
     setIsActionLoading(false);
   }

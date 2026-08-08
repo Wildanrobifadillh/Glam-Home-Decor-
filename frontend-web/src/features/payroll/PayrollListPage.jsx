@@ -31,6 +31,7 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { getDownloadErrorMessage } from "../../utils/getDownloadErrorMessage";
 import { cashBankApi } from "../cash-bank/cashBank.api";
 import { employeeApi } from "../employees/employee.api";
 import {
@@ -416,7 +417,7 @@ function PayrollListPage() {
       const response = await payrollApi.getSlipPdf(payrollId);
       openPayrollPdfResponse(response);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsOpeningSlip("");
     }
@@ -437,7 +438,7 @@ function PayrollListPage() {
         openPayrollPdfResponse(response);
       }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExporting("");
     }

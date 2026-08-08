@@ -26,6 +26,7 @@ import {
   getFileNameFromContentDisposition,
 } from "../../utils/downloadFile";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { getDownloadErrorMessage } from "../../utils/getDownloadErrorMessage";
 import { purchaseApi } from "./purchase.api";
 
 function PurchaseReportPage() {
@@ -138,7 +139,7 @@ function PurchaseReportPage() {
         fileName,
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExportingPdf(false);
     }
@@ -161,7 +162,7 @@ function PurchaseReportPage() {
         fileName,
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(await getDownloadErrorMessage(error));
     } finally {
       setIsExportingExcel(false);
     }
