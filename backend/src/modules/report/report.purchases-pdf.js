@@ -367,7 +367,8 @@ const generatePurchaseReportPdfBuffer = async ({
 
       const pageHeight = doc.page.height;
       const margin = 36;
-      const bottomLimit = pageHeight - 46;
+      const footerY = pageHeight - margin - 10;
+      const bottomLimit = footerY - 10;
 
       let y = drawReportHeader({
         doc,
@@ -465,7 +466,7 @@ const generatePurchaseReportPdfBuffer = async ({
         doc,
         `Dicetak pada ${formatDate(new Date())}`,
         margin,
-        pageHeight - 30,
+        footerY,
         {
           width: 300,
         }
