@@ -184,23 +184,6 @@ function SaleDetailPage() {
     }
   };
 
-  const handleGenerateDeliveryOrder = async () => {
-  try {
-    setIsActionLoading(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    await saleApi.generateDeliveryOrder(id);
-    await reloadSaleDetail();
-
-    setSuccessMessage("Surat jalan berhasil dibuat.");
-  } catch (error) {
-    setErrorMessage(getErrorMessage(error));
-  } finally {
-    setIsActionLoading(false);
-  }
-};
-
   const handleDownloadInvoicePdf = async () => {
     try {
         setIsActionLoading(true);
@@ -244,29 +227,19 @@ function SaleDetailPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!sale?.deliveryOrderNumber) {
-      await saleApi.generateDeliveryOrder(id);
-    }
-
     const response = await saleApi.getDeliveryOrderPdf(id);
     const blob = new Blob([response.data], { type: "application/pdf" });
 
-    const fileName = `${
-      sale?.deliveryOrderNumber || sale?.saleNumber || "surat-jalan"
-    }.pdf`;
+    const fileName = `surat-jalan-${
+  sale?.invoiceNumber || sale?.saleNumber || "penjualan"
+}.pdf`;
 
     downloadBlob(blob, fileName);
 
     setErrorMessage("");
     setSuccessMessage("PDF surat jalan berhasil diunduh.");
 
-    if (!sale?.deliveryOrderNumber) {
-      try {
-        await reloadSaleDetail();
-      } catch {
-        // PDF sudah berhasil download, jadi refresh detail gagal tidak perlu tampil error.
-      }
-    }
+
   } catch (error) {
     console.error("Download delivery order PDF error:", error);
     setErrorMessage(await getDownloadErrorMessage(error));
@@ -433,17 +406,6 @@ function SaleDetailPage() {
             </Button>
           ) : null}
 
-          {!sale.deliveryOrderNumber ? (
-            <Button
-              variant="secondary"
-              onClick={handleGenerateDeliveryOrder}
-              disabled={isActionLoading}
-            >
-              {isActionLoading ? <Loader2 size={16} /> : <ReceiptText size={16} />}
-              Generate Surat Jalan
-            </Button>
-          ) : null}
-
           <Button
             className="sale-detail-pdf-button"
             variant="secondary"
@@ -458,7 +420,7 @@ function SaleDetailPage() {
             className="sale-detail-pdf-button"
             variant="secondary"
             onClick={handleDownloadDeliveryOrderPdf}
-            disabled={isActionLoading}
+            disabled={isActionLoading || !sale.invoiceNumber}
           >
             <Download size={16} />
             PDF Surat Jalan
@@ -478,7 +440,7 @@ function SaleDetailPage() {
           label="No Penjualan"
           value={sale.saleNumber}
           subValue={`Invoice: ${sale.invoiceNumber || "Belum dibuat"} • Surat Jalan: ${
-            sale.deliveryOrderNumber || "Belum dibuat"
+            sale.invoiceNumber || "Belum dibuat"
           }`}
         />
 

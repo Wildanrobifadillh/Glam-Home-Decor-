@@ -42,13 +42,6 @@ router.post(
 );
 
 router.post(
-  "/:id/generate-delivery-order",
-  authenticate,
-  authorizeRoles("OWNER", "ADMIN_STAFF"),
-  saleController.generateSaleDeliveryOrder
-);
-
-router.post(
   "/",
   authenticate,
   authorizeRoles("OWNER", "ADMIN_STAFF"),

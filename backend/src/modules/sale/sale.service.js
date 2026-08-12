@@ -957,27 +957,6 @@ await tx.$executeRaw`
   return `${prefix}-${yearMonth}-${padNumber(nextNumber)}`;
 };
 
-const generateDeliveryOrderNumber = async ({ tx, documentSetting, date }) => {
-  const prefix = documentSetting.deliveryOrderPrefix;
-  const yearMonth = getYearMonth(date);
-
-  const deliveryOrderPrefix = documentSetting.resetNumberMonthly
-    ? `${prefix}-${yearMonth}`
-    : `${prefix}`;
-
-  const existingDeliveryOrderCount = await tx.sale.count({
-    where: {
-      deliveryOrderNumber: {
-        startsWith: deliveryOrderPrefix,
-      },
-    },
-  });
-
-  const nextNumber = existingDeliveryOrderCount + 1;
-
-  return `${deliveryOrderPrefix}-${padNumber(nextNumber)}`;
-};
-
 const getSaleInvoicePreview = async (saleId) => {
   const sale = await prisma.sale.findUnique({
     where: {
@@ -1240,18 +1219,18 @@ const getSaleDeliveryOrderPreview = async (saleId) => {
 
   return {
     deliveryOrder: {
-      saleId: sale.id,
-      saleNumber: sale.saleNumber,
-      invoiceNumber: sale.invoiceNumber,
-      deliveryOrderNumber: sale.deliveryOrderNumber,
-      previewNumber: sale.deliveryOrderNumber || `DRAFT-SJ-${sale.saleNumber}`,
-      deliveryOrderDate: sale.deliveryOrderDate,
-      transactionDate: sale.createdAt,
-      saleStatus: sale.status,
-      paperSize,
-      maxItems,
-      isOfficialDeliveryOrder: Boolean(sale.deliveryOrderNumber),
-    },
+  saleId: sale.id,
+  saleNumber: sale.saleNumber,
+  invoiceNumber: sale.invoiceNumber,
+  deliveryOrderNumber: sale.invoiceNumber,
+  previewNumber: sale.invoiceNumber || `DRAFT-SJ-${sale.saleNumber}`,
+  deliveryOrderDate: sale.deliveryOrderDate || sale.invoiceDate,
+  transactionDate: sale.createdAt,
+  saleStatus: sale.status,
+  paperSize,
+  maxItems,
+  isOfficialDeliveryOrder: Boolean(sale.invoiceNumber),
+},
     store: {
       name: storeProfile.name,
       legalName: storeProfile.legalName,
@@ -1421,101 +1400,6 @@ const generateSaleInvoice = async (saleId) => {
   };
 };
 
-const generateSaleDeliveryOrder = async (saleId) => {
-  const sale = await prisma.$transaction(async (tx) => {
-    const sale = await tx.sale.findUnique({
-      where: {
-        id: saleId,
-      },
-    });
-
-    if (!sale) {
-      const error = new Error("Sale not found");
-      error.status = 404;
-      throw error;
-    }
-
-    if (sale.status !== "COMPLETED") {
-      const error = new Error("Only completed sale can generate delivery order");
-      error.status = 400;
-      throw error;
-    }
-
-    if (sale.deliveryOrderNumber) {
-      const error = new Error("Delivery order number already generated");
-      error.status = 400;
-      throw error;
-    }
-
-    const documentSetting = await tx.documentSetting.upsert({
-      where: {
-        key: "MAIN",
-      },
-      update: {},
-      create: {
-        key: "MAIN",
-        documentLanguage: "ID",
-        salesInvoicePrefix: "INV-SALE-GHD",
-        salesReturnPrefix: "RET-SALE-GHD",
-        purchaseReturnPrefix: "RET-PUR-GHD",
-        payrollSlipPrefix: "PAYSLIP-GHD",
-        reportPrefix: "RPT-GHD",
-        deliveryOrderPrefix: "SJ-GHD",
-        resetNumberMonthly: true,
-        defaultPaperSize: "F4",
-        alternatePaperSize: "A4",
-        invoiceCopies: 3,
-        maxItemsF4: 12,
-        maxItemsA4: 8,
-        copyLabel1: "LEMBAR 1 - PELANGGAN",
-        copyLabel2: "LEMBAR 2 - ADMIN / KEUANGAN",
-        copyLabel3: "LEMBAR 3 - ARSIP TOKO",
-        thankYouNote:
-          `Terima kasih atas kepercayaan Anda berbelanja di ${DEFAULT_STORE_NAME}.`,
-        transactionProofNote: "Invoice ini merupakan bukti transaksi resmi.",
-        complaintTerms:
-          "Komplain maksimal 3 hari setelah barang diterima dan wajib menyertakan invoice.",
-        returnTerms: "Barang yang sudah dibeli mengikuti ketentuan retur toko.",
-        paymentTerms:
-          `Pembayaran dianggap sah setelah dana diterima oleh pihak ${DEFAULT_STORE_NAME}.`,
-        additionalNote: "Simpan invoice ini sebagai bukti transaksi.",
-        responsiblePersonName: "Zaid Ishmatul Fawaid",
-        responsiblePersonTitle: "Penanggung Jawab / Owner",
-        showSignature: true,
-        signatureUrl: null,
-        showStamp: true,
-        stampUrl: null,
-        signatureText: `Hormat kami,\n${DEFAULT_STORE_NAME}`,
-      },
-    });
-
-    const deliveryOrderDate = new Date();
-
-    const deliveryOrderNumber = await generateDeliveryOrderNumber({
-      tx,
-      documentSetting,
-      date: deliveryOrderDate,
-    });
-
-    return tx.sale.update({
-      where: {
-        id: saleId,
-      },
-      data: {
-        deliveryOrderNumber,
-        deliveryOrderDate,
-      },
-    });
-  });
-
-  const deliveryOrderPreview = await getSaleDeliveryOrderPreview(sale.id);
-
-  return {
-    sale,
-    deliveryOrderPreview,
-  };
-};
-
 const generateSaleInvoicePdf = async (saleId) => {
   const invoicePreview = await getSaleInvoicePreview(saleId);
 
@@ -1544,7 +1428,7 @@ const generateSaleDeliveryOrderPdf = async (saleId) => {
 
   if (!deliveryOrderPreview.deliveryOrder.isOfficialDeliveryOrder) {
     const error = new Error(
-      "Generate delivery order number before creating PDF"
+      "Generate invoice number before creating delivery order PDF"
     );
     error.status = 400;
     throw error;
@@ -1556,7 +1440,7 @@ const generateSaleDeliveryOrderPdf = async (saleId) => {
 
   return {
     pdfBuffer,
-    fileName: `${deliveryOrderPreview.deliveryOrder.deliveryOrderNumber}.pdf`,
+    fileName: `surat-jalan-${deliveryOrderPreview.deliveryOrder.deliveryOrderNumber}.pdf`,
   };
 };
 
@@ -1570,7 +1454,6 @@ module.exports = {
   getSaleInvoicePreview,
   getSaleDeliveryOrderPreview,
   generateSaleInvoice,
-  generateSaleDeliveryOrder,
   generateSaleInvoicePdf,
   generateSaleDeliveryOrderPdf,
 };

@@ -180,24 +180,6 @@ const generateSaleInvoice = async (req, res, next) => {
   }
 };
 
-const generateSaleDeliveryOrder = async (req, res, next) => {
-  try {
-    const deliveryOrder = await saleService.generateSaleDeliveryOrder(
-      req.params.id
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Sale delivery order generated successfully",
-      data: {
-        deliveryOrder,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const generateSaleInvoicePdf = async (req, res, next) => {
   try {
     const { pdfBuffer, fileName } = await saleService.generateSaleInvoicePdf(
@@ -238,7 +220,6 @@ module.exports = {
   getSaleInvoicePreview,
   getSaleDeliveryOrderPreview,
   generateSaleInvoice,
-  generateSaleDeliveryOrder,
   generateSaleInvoicePdf,
   generateSaleDeliveryOrderPdf,
 };

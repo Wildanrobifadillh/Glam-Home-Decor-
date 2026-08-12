@@ -45,10 +45,6 @@ export const saleApi = {
     return apiClient.get(`/sales/${id}/delivery-order-preview`);
   },
 
-  generateDeliveryOrder(id) {
-    return apiClient.post(`/sales/${id}/generate-delivery-order`);
-  },
-
   getDeliveryOrderPdf(id) {
     return apiClient.get(`/sales/${id}/delivery-order-pdf`, {
       responseType: "blob",
