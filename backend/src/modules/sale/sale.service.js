@@ -928,21 +928,33 @@ const generateSalesInvoiceNumber = async ({ tx, documentSetting, date }) => {
   const prefix = documentSetting.salesInvoicePrefix;
   const yearMonth = getYearMonth(date);
 
-  const invoicePrefix = documentSetting.resetNumberMonthly
-    ? `${prefix}-${yearMonth}`
-    : `${prefix}`;
+await tx.$executeRaw`
+  SELECT pg_advisory_xact_lock(hashtext(${`sales-invoice:${prefix}`}))
+`;
 
-  const existingInvoiceCount = await tx.sale.count({
+  const existingInvoices = await tx.sale.findMany({
     where: {
       invoiceNumber: {
-        startsWith: invoicePrefix,
+        startsWith: `${prefix}-`,
       },
+    },
+    select: {
+      invoiceNumber: true,
     },
   });
 
-  const nextNumber = existingInvoiceCount + 1;
+  const lastNumber = existingInvoices.reduce((highest, sale) => {
+    const parts = sale.invoiceNumber?.split("-") || [];
+    const sequence = Number.parseInt(parts[parts.length - 1], 10);
 
-  return `${invoicePrefix}-${padNumber(nextNumber)}`;
+    return Number.isInteger(sequence) && sequence > highest
+      ? sequence
+      : highest;
+  }, 0);
+
+  const nextNumber = lastNumber + 1;
+
+  return `${prefix}-${yearMonth}-${padNumber(nextNumber)}`;
 };
 
 const generateDeliveryOrderNumber = async ({ tx, documentSetting, date }) => {
