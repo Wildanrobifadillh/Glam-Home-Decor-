@@ -1352,9 +1352,9 @@ salesReportColumns.forEach((column, index) => {
   ];
 
   worksheet.autoFilter = {
-    from: "A5",
-    to: "S5",
-  };
+  from: "A5",
+  to: "I5",
+};
 
   const buffer = await workbook.xlsx.writeBuffer();
 
@@ -1926,7 +1926,7 @@ const exportStockReportExcel = async ({
 
   const worksheet = workbook.addWorksheet("Laporan Stok");
 
-  worksheet.mergeCells("A1:M1");
+  worksheet.mergeCells("A1:I1");
   worksheet.getCell("A1").value = getStoreName(storeProfile);
   worksheet.getCell("A1").font = {
     bold: true,
@@ -1936,7 +1936,7 @@ const exportStockReportExcel = async ({
     horizontal: "center",
   };
 
-  worksheet.mergeCells("A2:M2");
+  worksheet.mergeCells("A2:I2");
   worksheet.getCell("A2").value = "LAPORAN STOK BARANG";
   worksheet.getCell("A2").font = {
     bold: true,
@@ -1946,10 +1946,14 @@ const exportStockReportExcel = async ({
     horizontal: "center",
   };
 
-  worksheet.mergeCells("A3:M3");
-  worksheet.getCell("A3").value = `Filter: ${
-    stockStatus || status || categoryId || search ? "Sesuai parameter" : "Semua Barang"
-  }`;
+  worksheet.mergeCells("A3:I3");
+worksheet.getCell("A3").value = `Filter: ${getStockFilterLabel({
+  categoryId,
+  status,
+  stockStatus,
+  search,
+})}`;
+
   worksheet.getCell("A3").alignment = {
     horizontal: "center",
   };
@@ -1957,72 +1961,52 @@ const exportStockReportExcel = async ({
   worksheet.addRow([]);
 
   const stockReportColumns = [
-    {
-      label: "No",
-      key: "no",
-      width: 6,
-    },
-    {
-      label: "Kode Supplier",
-      key: "supplierCode",
-      width: 18,
-    },
-    {
-      label: "Kode Cari",
-      key: "searchCode",
-      width: 16,
-    },
-    {
-      label: "Nama Barang",
-      key: "name",
-      width: 28,
-    },
-    {
-      label: "Kategori",
-      key: "categoryName",
-      width: 18,
-    },
-    {
-      label: "Unit",
-      key: "unit",
-      width: 12,
-    },
-    {
-      label: "Stok",
-      key: "stock",
-      width: 10,
-    },
-    {
-      label: "Min Stok",
-      key: "minStock",
-      width: 12,
-    },
-    {
-      label: "Status Stok",
-      key: "stockStatus",
-      width: 16,
-    },
-    {
-      label: "Harga Beli",
-      key: "purchasePrice",
-      width: 16,
-    },
-    {
-      label: "Harga Jual",
-      key: "sellingPrice",
-      width: 16,
-    },
-    {
-      label: "Nilai Stok",
-      key: "stockValue",
-      width: 18,
-    },
-    {
-      label: "Status Barang",
-      key: "status",
-      width: 16,
-    },
-  ];
+  {
+    label: "No",
+    key: "no",
+    width: 6,
+  },
+  {
+    label: "Kode Barang",
+    key: "supplierCode",
+    width: 18,
+  },
+  {
+    label: "Nama Barang",
+    key: "name",
+    width: 28,
+  },
+  {
+    label: "Kategori",
+    key: "categoryName",
+    width: 18,
+  },
+  {
+    label: "Unit",
+    key: "unit",
+    width: 12,
+  },
+  {
+    label: "Stok",
+    key: "stock",
+    width: 10,
+  },
+  {
+    label: "Min Stok",
+    key: "minStock",
+    width: 12,
+  },
+  {
+    label: "Status Stok",
+    key: "stockStatus",
+    width: 16,
+  },
+  {
+    label: "Status Barang",
+    key: "status",
+    width: 16,
+  },
+];
 
   worksheet.columns = stockReportColumns.map((column) => ({
     key: column.key,
@@ -2074,17 +2058,14 @@ const exportStockReportExcel = async ({
   });
 
   let totalStock = 0;
-  let totalStockValue = 0;
   let safeStockCount = 0;
   let lowStockCount = 0;
   let outOfStockCount = 0;
 
   products.forEach((product, index) => {
     const currentStockStatus = getStockStatus(product);
-    const stockValue = product.stock * product.purchasePrice;
 
     totalStock += product.stock;
-    totalStockValue += stockValue;
 
     if (currentStockStatus === "AMAN") {
       safeStockCount += 1;
@@ -2101,35 +2082,59 @@ const exportStockReportExcel = async ({
     worksheet.addRow({
       no: index + 1,
       supplierCode: product.supplierCode,
-      searchCode: product.searchCode,
       name: product.name,
       categoryName: product.category ? product.category.name : "-",
       unit: product.unit,
       stock: product.stock,
       minStock: product.minStock,
       stockStatus: currentStockStatus,
-      purchasePrice: product.purchasePrice,
-      sellingPrice: product.sellingPrice,
-      stockValue,
       status: product.status,
     });
   });
 
-  const totalRow = worksheet.addRow({
-    no: "",
-    supplierCode: "",
-    searchCode: "",
-    name: "",
-    categoryName: "",
-    unit: "TOTAL",
-    stock: totalStock,
-    minStock: "",
-    stockStatus: `AMAN: ${safeStockCount}, MENIPIS: ${lowStockCount}, HABIS: ${outOfStockCount}`,
-    purchasePrice: "",
-    sellingPrice: "",
-    stockValue: totalStockValue,
-    status: "",
-  });
+  const totalRow = worksheet.addRow([
+  "",
+  "",
+  "",
+  "",
+  "",
+  totalStock,
+  "AMAN",
+  "MENIPIS",
+  "HABIS",
+]);
+
+worksheet.mergeCells(`A${totalRow.number}:E${totalRow.number}`);
+totalRow.getCell(1).value = "TOTAL";
+totalRow.font = {
+  bold: true,
+};
+totalRow.alignment = {
+  vertical: "middle",
+  horizontal: "center",
+};
+
+const statusRow = worksheet.addRow([
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  safeStockCount,
+  lowStockCount,
+  outOfStockCount,
+]);
+
+worksheet.mergeCells(`A${statusRow.number}:E${statusRow.number}`);
+statusRow.getCell(1).value = "STATUS";
+statusRow.font = {
+  bold: true,
+};
+statusRow.alignment = {
+  vertical: "middle",
+  horizontal: "center",
+};
 
   totalRow.font = {
     bold: true,
@@ -2161,12 +2166,6 @@ const exportStockReportExcel = async ({
     }
   });
 
-  const moneyColumns = ["J", "K", "L"];
-
-  moneyColumns.forEach((column) => {
-    worksheet.getColumn(column).numFmt = '"Rp." #,##0';
-  });
-
   worksheet.views = [
     {
       state: "frozen",
@@ -2176,7 +2175,7 @@ const exportStockReportExcel = async ({
 
   worksheet.autoFilter = {
     from: "A5",
-    to: "M5",
+    to: "I5",
   };
 
   const buffer = await workbook.xlsx.writeBuffer();

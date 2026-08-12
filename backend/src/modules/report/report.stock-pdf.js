@@ -110,26 +110,30 @@ const drawSummary = ({ doc, summary, y }) => {
 
   doc.rect(margin, y, boxWidth, boxHeight).stroke();
 
-  const colWidth = boxWidth / 4;
+  const colWidth = boxWidth / 5;
 
-  const summaryItems = [
-    {
-      label: "Jumlah Barang",
-      value: String(summary.productCount),
-    },
-    {
-      label: "Total Stok",
-      value: String(summary.totalStock),
-    },
-    {
-      label: "Nilai Stok",
-      value: formatCurrency(summary.totalStockValue),
-    },
-    {
-      label: "Status Stok",
-      value: `Aman ${summary.safeStockCount} | Menipis ${summary.lowStockCount} | Habis ${summary.outOfStockCount}`,
-    },
-  ];
+const summaryItems = [
+  {
+    label: "Jumlah Barang",
+    value: String(summary.productCount),
+  },
+  {
+    label: "Total Stok",
+    value: String(summary.totalStock),
+  },
+  {
+    label: "Aman",
+    value: String(summary.safeStockCount),
+  },
+  {
+    label: "Menipis",
+    value: String(summary.lowStockCount),
+  },
+  {
+    label: "Habis",
+    value: String(summary.outOfStockCount),
+  },
+];
 
   summaryItems.forEach((item, index) => {
     const x = margin + colWidth * index;
@@ -144,7 +148,7 @@ const drawSummary = ({ doc, summary, y }) => {
       align: "center",
     });
 
-    doc.font("Helvetica-Bold").fontSize(index === 3 ? 8.5 : 10);
+    doc.font("Helvetica-Bold").fontSize(10);
     drawText(doc, item.value, x + 10, y + 32, {
       width: colWidth - 20,
       align: "center",
@@ -161,18 +165,16 @@ const drawTableHeader = ({ doc, y }) => {
   const tableWidth = tableRight - margin;
   const rowHeight = 24;
 
-  const widths = {
-    no: 30,
-    supplierCode: 82,
-    searchCode: 74,
-    name: 180,
-    category: 95,
-    unit: 56,
-    stock: 48,
-    minStock: 55,
-    stockStatus: 85,
-    stockValue: tableWidth - 30 - 82 - 74 - 180 - 95 - 56 - 48 - 55 - 85,
-  };
+const widths = {
+  no: 35,
+  supplierCode: 110,
+  name: 195,
+  category: 125,
+  unit: 70,
+  stock: 60,
+  minStock: 60,
+  stockStatus: tableWidth - 35 - 110 - 195 - 125 - 70 - 60 - 60,
+};
 
   const columns = {};
   let currentX = margin;
@@ -184,19 +186,12 @@ const drawTableHeader = ({ doc, y }) => {
   };
   currentX += widths.no;
 
-  columns.supplierCode = {
-    x: currentX,
-    width: widths.supplierCode,
-    label: "Kode Supplier",
-  };
-  currentX += widths.supplierCode;
-
-  columns.searchCode = {
-    x: currentX,
-    width: widths.searchCode,
-    label: "Kode Cari",
-  };
-  currentX += widths.searchCode;
+columns.supplierCode = {
+  x: currentX,
+  width: widths.supplierCode,
+  label: "Kode Barang",
+};
+currentX += widths.supplierCode;
 
   columns.name = {
     x: currentX,
@@ -239,12 +234,6 @@ const drawTableHeader = ({ doc, y }) => {
     label: "Status",
   };
   currentX += widths.stockStatus;
-
-  columns.stockValue = {
-    x: currentX,
-    width: widths.stockValue,
-    label: "Nilai Stok",
-  };
 
   doc.rect(margin, y, tableWidth, rowHeight).fillAndStroke(
     "#1F4E78",
@@ -289,19 +278,6 @@ const drawTableRow = ({ doc, row, columns, y, isTotal = false }) => {
     columns.supplierCode.x,
     y,
     columns.supplierCode.width,
-    rowHeight,
-    {
-      align: "center",
-      font,
-    }
-  );
-
-  drawCell(
-    doc,
-    row.searchCode,
-    columns.searchCode.x,
-    y,
-    columns.searchCode.width,
     rowHeight,
     {
       align: "center",
@@ -363,20 +339,81 @@ const drawTableRow = ({ doc, row, columns, y, isTotal = false }) => {
     }
   );
 
+  return y + rowHeight;
+};
+
+const drawStockSummaryRows = ({ doc, columns, y, summary }) => {
+  const margin = 36;
+  const pageWidth = doc.page.width;
+  const tableRight = pageWidth - margin;
+  const rowHeight = 23;
+
+  const totalLabelWidth = columns.stock.x - margin;
+  const stockWidth = columns.stock.width;
+
+  const statusStartX = columns.minStock.x;
+  const statusAreaWidth = tableRight - statusStartX;
+  const statusWidth = statusAreaWidth / 3;
+
+  doc.rect(margin, y, totalLabelWidth, rowHeight).stroke();
+  drawCell(doc, "TOTAL", margin, y, totalLabelWidth, rowHeight, {
+    align: "center",
+    font: "Helvetica-Bold",
+  });
+
+  doc.rect(columns.stock.x, y, stockWidth, rowHeight).stroke();
   drawCell(
     doc,
-    row.stockValue,
-    columns.stockValue.x,
+    String(summary.totalStock),
+    columns.stock.x,
     y,
-    columns.stockValue.width,
+    stockWidth,
     rowHeight,
     {
       align: "center",
-      font,
+      font: "Helvetica-Bold",
     }
   );
 
-  return y + rowHeight;
+  const statusHeaders = ["AMAN", "MENIPIS", "HABIS"];
+
+  statusHeaders.forEach((label, index) => {
+    const x = statusStartX + statusWidth * index;
+
+    doc.rect(x, y, statusWidth, rowHeight).stroke();
+    drawCell(doc, label, x, y, statusWidth, rowHeight, {
+      align: "center",
+      font: "Helvetica-Bold",
+    });
+  });
+
+  const secondY = y + rowHeight;
+
+  doc.rect(margin, secondY, totalLabelWidth, rowHeight).stroke();
+  drawCell(doc, "STATUS", margin, secondY, totalLabelWidth, rowHeight, {
+    align: "center",
+    font: "Helvetica-Bold",
+  });
+
+  doc.rect(columns.stock.x, secondY, stockWidth, rowHeight).stroke();
+
+  const statusValues = [
+    summary.safeStockCount,
+    summary.lowStockCount,
+    summary.outOfStockCount,
+  ];
+
+  statusValues.forEach((value, index) => {
+    const x = statusStartX + statusWidth * index;
+
+    doc.rect(x, secondY, statusWidth, rowHeight).stroke();
+    drawCell(doc, String(value), x, secondY, statusWidth, rowHeight, {
+      align: "center",
+      font: "Helvetica-Bold",
+    });
+  });
+
+  return secondY + rowHeight;
 };
 
 const generateStockReportPdfBuffer = async ({
@@ -401,7 +438,8 @@ const generateStockReportPdfBuffer = async ({
 
       const pageHeight = doc.page.height;
       const margin = 36;
-      const bottomLimit = pageHeight - 46;
+      const footerY = pageHeight - margin - 10;
+      const bottomLimit = footerY - 10;
 
       let y = drawReportHeader({
         doc,
@@ -446,18 +484,16 @@ const generateStockReportPdfBuffer = async ({
           doc,
           columns,
           y,
-          row: {
-            no: String(index + 1),
-            supplierCode: product.supplierCode,
-            searchCode: product.searchCode,
-            name: product.name,
-            category: product.categoryName,
-            unit: product.unit,
-            stock: String(product.stock),
-            minStock: String(product.minStock),
-            stockStatus: product.stockStatus,
-            stockValue: formatCurrency(product.stockValue),
-          },
+row: {
+  no: String(index + 1),
+  supplierCode: product.supplierCode,
+  name: product.name,
+  category: product.categoryName,
+  unit: product.unit,
+  stock: String(product.stock),
+  minStock: String(product.minStock),
+  stockStatus: product.stockStatus,
+},
         });
       });
 
@@ -479,27 +515,15 @@ const generateStockReportPdfBuffer = async ({
         columns = table.columns;
       }
 
-      y = drawTableRow({
-        doc,
-        columns,
-        y,
-        isTotal: true,
-        row: {
-          no: "",
-          supplierCode: "",
-          searchCode: "",
-          name: "",
-          category: "",
-          unit: "TOTAL",
-          stock: String(summary.totalStock),
-          minStock: "",
-          stockStatus: `Aman ${summary.safeStockCount} | Menipis ${summary.lowStockCount} | Habis ${summary.outOfStockCount}`,
-          stockValue: formatCurrency(summary.totalStockValue),
-        },
-      });
+y = drawStockSummaryRows({
+  doc,
+  columns,
+  y,
+  summary,
+});
 
       doc.font("Helvetica").fontSize(7);
-      drawText(doc, `Dicetak pada ${formatDate(new Date())}`, margin, pageHeight - 30, {
+      drawText(doc, `Dicetak pada ${formatDate(new Date())}`, margin, footerY, {
         width: 300,
       });
 
