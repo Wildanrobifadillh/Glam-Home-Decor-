@@ -55,6 +55,13 @@ router.post(
   saleController.paySale
 );
 
+router.post(
+  "/:id/cancel",
+  authenticate,
+  authorizeRoles("OWNER", "ADMIN_STAFF"),
+  saleController.cancelSale
+);
+
 router.patch(
   "/:id/approve",
   authenticate,

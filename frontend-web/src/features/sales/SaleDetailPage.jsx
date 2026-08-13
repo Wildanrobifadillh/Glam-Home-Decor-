@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  AlertTriangle,
   Banknote,
   CalendarDays,
   Download,
@@ -36,6 +37,9 @@ function SaleDetailPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -183,6 +187,44 @@ function SaleDetailPage() {
       setIsActionLoading(false);
     }
   };
+
+  const handleOpenCancelModal = () => {
+  setCancelReason("");
+  setErrorMessage("");
+  setSuccessMessage("");
+  setIsCancelModalOpen(true);
+};
+
+const handleConfirmCancel = async (event) => {
+  event.preventDefault();
+
+  const reason = cancelReason.trim();
+
+  if (reason.length < 3) {
+    setErrorMessage("Alasan pembatalan minimal 3 karakter.");
+    return;
+  }
+
+  try {
+    setIsCancelling(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    await saleApi.cancel(id, {
+      reason,
+    });
+
+    await reloadSaleDetail();
+
+    setIsCancelModalOpen(false);
+    setCancelReason("");
+    setSuccessMessage("Penjualan berhasil dibatalkan.");
+  } catch (error) {
+    setErrorMessage(getErrorMessage(error));
+  } finally {
+    setIsCancelling(false);
+  }
+};
 
   const handleDownloadInvoicePdf = async () => {
     try {
@@ -425,6 +467,17 @@ function SaleDetailPage() {
             <Download size={16} />
             PDF Surat Jalan
           </Button>
+          {sale.status === "COMPLETED" ? (
+          <Button
+            type="button"
+            variant="danger"
+            onClick={handleOpenCancelModal}
+            disabled={isActionLoading || isCancelling}
+          >
+            <AlertTriangle size={16} />
+            Batalkan Penjualan
+          </Button>
+        ) : null}
         </div>
         </div>
 
@@ -755,6 +808,72 @@ function SaleDetailPage() {
               disabled={isActionLoading}
             >
               Simpan Pembayaran
+            </button>
+          </div>
+        </form>
+      </div>,
+      document.body
+    )
+  : null}
+  {isCancelModalOpen
+  ? createPortal(
+      <div className="sale-detail-modal-backdrop">
+        <form className="sale-detail-modal" onSubmit={handleConfirmCancel}>
+          <div className="sale-detail-modal-header">
+            <div>
+              <h2>Batalkan Penjualan</h2>
+              <p>
+                {Number(sale.paidAmount || 0) > 0
+                  ? `Penjualan ${sale.saleNumber} akan dibatalkan. Stok akan dikembalikan dan seluruh dampak pembayaran pada kas/bank akan dibalik.`
+                  : `Penjualan ${sale.saleNumber} akan dibatalkan dan stok barang akan dikembalikan.`}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCancelModalOpen(false);
+                setCancelReason("");
+              }}
+              disabled={isCancelling}
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="sale-detail-modal-body">
+            <label className="is-full">
+              Alasan Pembatalan
+              <textarea
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                placeholder="Contoh: Transaksi salah input dan harus dibatalkan."
+                minLength={3}
+                maxLength={500}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="sale-detail-modal-footer">
+            <button
+              type="button"
+              className="sale-detail-modal-cancel"
+              onClick={() => {
+                setIsCancelModalOpen(false);
+                setCancelReason("");
+              }}
+              disabled={isCancelling}
+            >
+              Kembali
+            </button>
+
+            <button
+              type="submit"
+              className="sale-detail-modal-submit"
+              disabled={isCancelling || cancelReason.trim().length < 3}
+            >
+              {isCancelling ? "Membatalkan..." : "Ya, Batalkan Penjualan"}
             </button>
           </div>
         </form>

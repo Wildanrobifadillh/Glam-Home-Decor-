@@ -19,6 +19,10 @@ export const saleApi = {
     return apiClient.post(`/sales/${id}/payments`, payload);
   },
 
+cancel(id, payload) {
+  return apiClient.post(`/sales/${id}/cancel`, payload);
+},
+
   approve(id, payload = {}) {
     return apiClient.patch(`/sales/${id}/approve`, payload);
   },

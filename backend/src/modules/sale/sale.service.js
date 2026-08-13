@@ -91,6 +91,105 @@ const createSaleStockHistories = async ({ tx, sale, items, createdById }) => {
   }
 };
 
+const restoreCancelledSaleStock = async ({
+  tx,
+  sale,
+  items,
+  cancelledById,
+  reason,
+}) => {
+  const existingCancellationCount = await tx.stockHistory.count({
+    where: {
+      movementNumber: {
+        startsWith: `STK-IN-CANCEL-${sale.saleNumber}-`,
+      },
+    },
+  });
+
+  if (existingCancellationCount > 0) {
+    const error = new Error("Sale cancellation stock history already exists");
+    error.status = 400;
+    throw error;
+  }
+
+  const originalStockHistories = await tx.stockHistory.findMany({
+    where: {
+      movementNumber: {
+        startsWith: `STK-OUT-${sale.saleNumber}-`,
+      },
+    },
+  });
+
+  if (originalStockHistories.length !== items.length) {
+    const error = new Error("Sale stock history does not match sale items");
+    error.status = 400;
+    throw error;
+  }
+
+  const usedHistoryIds = new Set();
+
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+
+    const originalStockHistory = originalStockHistories.find(
+      (history) =>
+        !usedHistoryIds.has(history.id) &&
+        history.productId === item.productId &&
+        history.quantity === item.quantity &&
+        history.type === "OUT"
+    );
+
+    if (!originalStockHistory) {
+      const error = new Error(
+        `Original stock movement not found for sale item ${index + 1}`
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    usedHistoryIds.add(originalStockHistory.id);
+
+    const product = await tx.product.findUnique({
+      where: {
+        id: item.productId,
+      },
+    });
+
+    if (!product) {
+      const error = new Error("Product not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const updatedProduct = await tx.product.update({
+      where: {
+        id: item.productId,
+      },
+      data: {
+        stock: {
+          increment: item.quantity,
+        },
+      },
+    });
+
+    const stockAfter = updatedProduct.stock;
+    const stockBefore = stockAfter - item.quantity;
+
+    await tx.stockHistory.create({
+      data: {
+        movementNumber: `STK-IN-CANCEL-${sale.saleNumber}-${index + 1}`,
+        productId: item.productId,
+        type: "IN",
+        quantity: item.quantity,
+        stockBefore,
+        stockAfter,
+        note: `Pembatalan penjualan ${sale.saleNumber}: ${reason}`,
+        createdById: cancelledById,
+      },
+    });
+  }
+};
+
 const createSaleJournal = async ({
   tx,
   sale,
@@ -785,6 +884,9 @@ const paySale = async ({
   createdById,
 }) => {
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtext(${`sale:${saleId}`}))
+    `;
     const sale = await tx.sale.findUnique({
       where: {
         id: saleId,
@@ -910,6 +1012,284 @@ const paySale = async ({
         },
       },
     });
+  });
+};
+
+const cancelSale = async ({
+  saleId,
+  reason,
+  cancelledById,
+}) => {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+  SELECT pg_advisory_xact_lock(hashtext(${`sale:${saleId}`}))
+`;
+    const sale = await tx.sale.findUnique({
+      where: {
+        id: saleId,
+      },
+      include: {
+        items: true,
+        receivablePayments: true,
+        saleReturns: true,
+      },
+    });
+
+    if (!sale) {
+      const error = new Error("Sale not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (sale.status !== "COMPLETED") {
+      const error = new Error("Only completed sale can be cancelled");
+      error.status = 400;
+      throw error;
+    }
+
+    if (sale.saleReturns.length > 0) {
+      const error = new Error(
+        "Sale with existing return cannot be cancelled"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const saleJournalEntries = await tx.journalEntry.findMany({
+      where: {
+        sourceType: "SALE",
+        sourceId: sale.id,
+      },
+      include: {
+        lines: true,
+        reversedBy: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    if (saleJournalEntries.length !== 1) {
+      const error = new Error(
+        "Sale must have exactly one journal entry before cancellation"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const originalJournalEntry = saleJournalEntries[0];
+
+    if (originalJournalEntry.status !== "POSTED") {
+      const error = new Error(
+        "Sale journal entry is not in posted status"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (originalJournalEntry.reversedBy) {
+      const error = new Error(
+        "Sale journal entry has already been reversed"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const paymentJournalEntries = await tx.journalEntry.findMany({
+      where: {
+        sourceType: "RECEIVABLE_PAYMENT",
+        sourceId: sale.id,
+      },
+      include: {
+        lines: true,
+        reversedBy: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    if (paymentJournalEntries.length !== sale.receivablePayments.length) {
+      const error = new Error(
+        "Sale payment journals do not match payment history"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const recordedPaymentTotal = sale.receivablePayments.reduce(
+  (total, payment) => total + Number(payment.amount || 0),
+  0
+);
+
+    const paymentJournalTotal = paymentJournalEntries.reduce(
+      (total, journalEntry) =>
+        total +
+        journalEntry.lines.reduce(
+          (journalTotal, line) => journalTotal + Number(line.debit || 0),
+          0
+        ),
+      0
+    );
+
+    if (paymentJournalTotal !== recordedPaymentTotal) {
+      const error = new Error(
+        "Sale payment journal amounts do not match payment history"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (
+      Number(sale.paidAmount || 0) + Number(sale.remainingAmount || 0) !==
+      Number(sale.totalAmount || 0)
+    ) {
+      const error = new Error(
+        "Sale payment amounts are inconsistent"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    if (recordedPaymentTotal > Number(sale.paidAmount || 0)) {
+      const error = new Error(
+        "Sale payment history exceeds paid amount"
+      );
+      error.status = 400;
+      throw error;
+    }
+
+    const initialPaymentAmount =
+  Number(sale.paidAmount || 0) - recordedPaymentTotal;
+
+const saleJournalAccountIds = originalJournalEntry.lines.map(
+  (line) => line.accountId
+);
+
+const relatedCashBankAccounts = await tx.cashBankAccount.findMany({
+  where: {
+    accountId: {
+      in: saleJournalAccountIds,
+    },
+  },
+  select: {
+    accountId: true,
+  },
+});
+
+const cashBankAccountIds = new Set(
+  relatedCashBankAccounts.map((account) => account.accountId)
+);
+
+const saleJournalCashBankAmount = originalJournalEntry.lines.reduce(
+  (total, line) => {
+    if (!cashBankAccountIds.has(line.accountId)) {
+      return total;
+    }
+
+    return (
+      total +
+      Number(line.debit || 0) -
+      Number(line.credit || 0)
+    );
+  },
+  0
+);
+
+if (saleJournalCashBankAmount !== initialPaymentAmount) {
+  const error = new Error(
+    "Sale initial payment does not match sale journal"
+  );
+  error.status = 400;
+  throw error;
+}
+
+    for (const paymentJournalEntry of paymentJournalEntries) {
+      if (paymentJournalEntry.status !== "POSTED") {
+        const error = new Error(
+          "Sale payment journal is not in posted status"
+        );
+        error.status = 400;
+        throw error;
+      }
+
+      if (paymentJournalEntry.reversedBy) {
+        const error = new Error(
+          "Sale payment journal has already been reversed"
+        );
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    await restoreCancelledSaleStock({
+      tx,
+      sale,
+      items: sale.items,
+      cancelledById,
+      reason,
+    });
+
+    const reversalLines = originalJournalEntry.lines.map((line) => ({
+      accountId: line.accountId,
+      debit: line.credit,
+      credit: line.debit,
+      note: `Cancellation of ${sale.saleNumber}: ${reason}`,
+    }));
+
+    const cancellationJournal = await createJournalEntryWithLines({
+      tx,
+      description: `Cancellation of sale ${sale.saleNumber} - ${reason}`,
+      sourceType: "REVERSAL",
+      sourceId: originalJournalEntry.id,
+      reversalOfId: originalJournalEntry.id,
+      lines: reversalLines,
+      createdById: cancelledById,
+    });
+
+    const paymentCancellationJournals = [];
+
+    for (const paymentJournalEntry of paymentJournalEntries) {
+      const paymentReversalLines = paymentJournalEntry.lines.map((line) => ({
+        accountId: line.accountId,
+        debit: line.credit,
+        credit: line.debit,
+        note: `Cancellation of ${sale.saleNumber}: ${reason}`,
+      }));
+
+      const paymentCancellationJournal = await createJournalEntryWithLines({
+        tx,
+        description: `Cancellation of payment for sale ${sale.saleNumber} - ${reason}`,
+        sourceType: "REVERSAL",
+        sourceId: paymentJournalEntry.id,
+        reversalOfId: paymentJournalEntry.id,
+        lines: paymentReversalLines,
+        createdById: cancelledById,
+      });
+
+      paymentCancellationJournals.push(paymentCancellationJournal);
+    }
+
+    await tx.sale.update({
+      where: {
+        id: sale.id,
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
+
+    const cancelledSale = await tx.sale.findUnique({
+      where: {
+        id: sale.id,
+      },
+    });
+
+    return {
+      sale: cancelledSale,
+      cancellationJournal,
+      paymentCancellationJournals,
+    };
   });
 };
 
@@ -1284,6 +1664,9 @@ const getSaleDeliveryOrderPreview = async (saleId) => {
 
 const generateSaleInvoice = async (saleId) => {
   const sale = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtext(${`sale:${saleId}`}))
+        `;
     const sale = await tx.sale.findUnique({
       where: {
         id: saleId,
@@ -1456,4 +1839,5 @@ module.exports = {
   generateSaleInvoice,
   generateSaleInvoicePdf,
   generateSaleDeliveryOrderPdf,
+  cancelSale,
 };

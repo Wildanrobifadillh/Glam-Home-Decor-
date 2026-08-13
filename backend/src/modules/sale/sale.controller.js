@@ -4,6 +4,7 @@ const {
   approveSaleSchema,
   rejectSaleSchema,
   paySaleSchema,
+  cancelSaleSchema,
 } = require("./sale.validation");
 
 const getAllSales = async (req, res, next) => {
@@ -129,6 +130,26 @@ const paySale = async (req, res, next) => {
   }
 };
 
+const cancelSale = async (req, res, next) => {
+  try {
+    const validatedData = cancelSaleSchema.parse(req.body);
+
+    const result = await saleService.cancelSale({
+      saleId: req.params.id,
+      reason: validatedData.reason,
+      cancelledById: req.user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale cancelled successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getSaleInvoicePreview = async (req, res, next) => {
   try {
     const invoicePreview = await saleService.getSaleInvoicePreview(
@@ -217,6 +238,7 @@ module.exports = {
   approveSale,
   rejectSale,
   paySale,
+  cancelSale,
   getSaleInvoicePreview,
   getSaleDeliveryOrderPreview,
   generateSaleInvoice,

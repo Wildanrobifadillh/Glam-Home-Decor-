@@ -162,6 +162,10 @@ const createSaleReturn = async ({
   createdById,
 }) => {
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtext(${`sale:${saleId}`}))
+    `;
+
     const sale = await tx.sale.findUnique({
       where: {
         id: saleId,
