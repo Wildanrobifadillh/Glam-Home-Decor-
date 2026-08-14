@@ -616,15 +616,28 @@ const generateSaleDeliveryOrderPdfBuffer = async (deliveryOrderPreview) => {
   return new Promise((resolve, reject) => {
     try {
       const paperSize =
-  deliveryOrderPreview.deliveryOrder?.paperSize || "CONTINUOUS_95X11";
-  const size = PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
+        deliveryOrderPreview.deliveryOrder?.paperSize || "CONTINUOUS_95X11";
 
-  const doc = new PDFDocument({
-    size,
-    layout: "portrait",
-    margin: 24,
-    compress: true,
-  });
+      const size =
+        PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
+
+      const printScale =
+        paperSize === "CONTINUOUS_95X11" ? 0.88 : 1;
+
+      const doc = new PDFDocument({
+        size,
+        layout: "portrait",
+        margin: 24,
+        compress: true,
+      });
+
+      if (printScale !== 1) {
+        doc.scale(printScale);
+
+        doc.on("pageAdded", () => {
+          doc.scale(printScale);
+        });
+      }
 
       const chunks = [];
 
@@ -642,7 +655,7 @@ const generateSaleDeliveryOrderPdfBuffer = async (deliveryOrderPreview) => {
 
       drawDeliveryOrder(doc, deliveryOrderPreview);
 
-doc.end();
+      doc.end();
     } catch (error) {
       reject(error);
     }

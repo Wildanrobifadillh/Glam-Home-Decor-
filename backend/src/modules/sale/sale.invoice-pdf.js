@@ -590,9 +590,14 @@ const footerY = y + noteHeight + 14;
 const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
   return new Promise((resolve, reject) => {
     try {
-      const paperSize = invoicePreview.invoice.paperSize || "CONTINUOUS_95X11";
-      const pageSize = PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
+      const paperSize =
+        invoicePreview.invoice.paperSize || "CONTINUOUS_95X11";
+      const pageSize =
+        PAPER_SIZES[paperSize] || PAPER_SIZES.CONTINUOUS_95X11;
       const layout = "portrait";
+
+      const printScale =
+        paperSize === "CONTINUOUS_95X11" ? 0.88 : 1;
 
       const doc = new PDFDocument({
         size: pageSize,
@@ -601,6 +606,14 @@ const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
         bufferPages: true,
       });
 
+      if (printScale !== 1) {
+        doc.scale(printScale);
+
+        doc.on("pageAdded", () => {
+          doc.scale(printScale);
+        });
+      }
+
       const chunks = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
@@ -608,12 +621,12 @@ const generateSaleInvoicePdfBuffer = async (invoicePreview) => {
       doc.on("error", reject);
 
       drawInvoiceCopy({
-  doc,
-  invoicePreview,
-  copyLabel: invoicePreview.invoice.copyLabels[0] || null,
-});
+        doc,
+        invoicePreview,
+        copyLabel: invoicePreview.invoice.copyLabels[0] || null,
+      });
 
-doc.end();
+      doc.end();
     } catch (error) {
       reject(error);
     }
